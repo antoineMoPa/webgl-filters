@@ -20,7 +20,7 @@
     "build": "tsup",
     "build:demo": "tsup --config tsup.demo.config.ts",
     "build:docs": "typedoc",
-    "build:site": "npm run build:demo && npm run build:docs",
+    "build:site": "cp site/.nojekyll site/index.html docs/ && cp site/demo/index.html docs/demo/ && npm run build:demo && npm run build:docs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
