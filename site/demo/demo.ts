@@ -113,8 +113,24 @@ const filterDefs: FilterDef[] = [
     create() { return invert(); },
   },
   {
-    name: "Blur (5x5 Gaussian)",
-    create() { return blur(); },
+    name: "Blur",
+    create() {
+      const radius = parseFloat((document.getElementById("ctrl-blur-radius") as HTMLInputElement)?.value ?? "2");
+      const strength = parseFloat((document.getElementById("ctrl-blur-strength") as HTMLInputElement)?.value ?? "1");
+      return blur({ radius, strength });
+    },
+    controls(el, onChange) {
+      el.innerHTML = `
+        <label>Radius</label><input type="range" id="ctrl-blur-radius" min="1" max="10" step="1" value="2"><span class="value">2</span>
+        <label>Strength</label><input type="range" id="ctrl-blur-strength" min="0" max="1" step="0.05" value="1"><span class="value">1</span>`;
+      for (const slider of el.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+        const display = slider.nextElementSibling as HTMLElement;
+        slider.addEventListener("input", () => {
+          display.textContent = slider.value;
+          onChange();
+        });
+      }
+    },
   },
   {
     name: "Sharpen (5x5)",
@@ -212,7 +228,7 @@ const pipelineChecks = document.getElementById("pipeline-checks")!;
 const pipelineCanvas = document.getElementById("pipeline-canvas") as HTMLCanvasElement;
 const pipelineTiming = document.getElementById("pipeline-timing")!;
 
-const simpleFilters = ["Brightness", "Contrast", "Saturate", "Invert", "Blur (5x5 Gaussian)", "Sharpen (5x5)"];
+const simpleFilters = ["Brightness", "Contrast", "Saturate", "Invert", "Blur", "Sharpen (5x5)"];
 for (const name of simpleFilters) {
   const label = document.createElement("label");
   const cb = document.createElement("input");

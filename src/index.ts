@@ -15,6 +15,7 @@ export { invert } from "./filters/invert.js";
 export { convolve } from "./filters/convolve.js";
 
 export { blur } from "./filters/blur.js";
+export type { BlurParams } from "./filters/blur.js";
 export { sharpen } from "./filters/sharpen.js";
 
 export { customShader } from "./filters/customShader.js";

@@ -37,7 +37,7 @@ const result = glFilters(gl)
 | `contrast({ factor })` | `factor`: float (1.0 = no change) | Scales around midpoint |
 | `saturate({ factor })` | `factor`: float (1.0 = no change, 0 = grayscale) | Adjusts color saturation |
 | `invert()` | — | Inverts RGB channels |
-| `blur()` | — | 5×5 Gaussian blur |
+| `blur({ radius?, strength? })` | `radius`: px (default 2), `strength`: 0–1 (default 1) | Gaussian blur — radius sets kernel size, strength blends with original |
 | `sharpen()` | — | 5×5 sharpening |
 | `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array | Custom 5×5 convolution |
 | `customShader({ source, uniforms? })` | GLSL source + uniforms | User-defined shader |
