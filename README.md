@@ -16,7 +16,8 @@ import { glFilters, brightness, saturate, blur, invert, customShader } from "web
 // Browser: get GL context from a canvas
 const gl = canvas.getContext("webgl");
 
-// Node: uses the `gl` package (included as dependency)
+// Node: install the `gl` package for headless WebGL
+// npm install gl
 import createGL from "gl";
 const gl = createGL(width, height, { preserveDrawingBuffer: true });
 
