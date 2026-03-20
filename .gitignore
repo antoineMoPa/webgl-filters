@@ -1,0 +1,7 @@
+node_modules
+dist
+*.tgz
+
+# Generated site assets (rebuilt via npm run build:site)
+docs/api
+docs/demo/demo.js

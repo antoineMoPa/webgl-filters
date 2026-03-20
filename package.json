@@ -1,0 +1,57 @@
+{
+  "name": "webgl-filters",
+  "version": "0.1.0",
+  "description": "GPU-accelerated image filters using WebGL shaders",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "build:demo": "tsup --config tsup.demo.config.ts",
+    "build:docs": "typedoc",
+    "build:site": "npm run build:demo && npm run build:docs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "webgl",
+    "image",
+    "filter",
+    "shader",
+    "gpu",
+    "contrast",
+    "brightness",
+    "blur",
+    "sharpen",
+    "convolution"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "devDependencies": {
+    "@types/gl": "^6.0.5",
+    "tsup": "^8.0.0",
+    "typedoc": "^0.28.17",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "gl": "^8.1.6"
+  }
+}

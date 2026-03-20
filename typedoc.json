@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "name": "webgl-filters",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "readme": "README.md"
+}
