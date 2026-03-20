@@ -46,12 +46,18 @@
   },
   "devDependencies": {
     "@types/gl": "^6.0.5",
+    "gl": "^8.1.6",
     "tsup": "^8.0.0",
     "typedoc": "^0.28.17",
     "typescript": "^5.4.0",
     "vitest": "^3.0.0"
   },
-  "optionalDependencies": {
-    "gl": "^8.1.6"
+  "peerDependencies": {
+    "gl": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "gl": {
+      "optional": true
+    }
   }
 }
