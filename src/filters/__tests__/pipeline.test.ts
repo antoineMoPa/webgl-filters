@@ -1,17 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { pipeline } from "../../pipeline.js";
+import { glFilters } from "../../pipeline.js";
 import { brightness } from "../brightness.js";
 import { invert } from "../invert.js";
 import { contrast } from "../contrast.js";
 import { applyFilters } from "../../renderer.js";
 import { createContext, solidImage, pixel } from "./helpers.js";
 
-describe("pipeline", () => {
+describe("glFilters", () => {
   const gl = createContext();
 
   it("applies filters in order", () => {
     const img = solidImage(2, 2, 100, 100, 100);
-    const result = pipeline(gl)
+    const result = glFilters(gl)
       .addFilter(brightness({ amount: 0.1 }))
       .addFilter(invert())
       .apply(img);
@@ -23,7 +23,7 @@ describe("pipeline", () => {
 
   it("returns unchanged image with no filters", () => {
     const img = solidImage(2, 2, 100, 150, 200);
-    const result = pipeline(gl).apply(img);
+    const result = glFilters(gl).apply(img);
     const [r, g, b] = pixel(result, 0);
     expect(r).toBeCloseTo(100, -1);
     expect(g).toBeCloseTo(150, -1);
@@ -32,7 +32,7 @@ describe("pipeline", () => {
 
   it("chains multiple filters", () => {
     const img = solidImage(2, 2, 128, 128, 128);
-    const result = pipeline(gl)
+    const result = glFilters(gl)
       .addFilter(contrast({ factor: 1.0 }))
       .addFilter(brightness({ amount: 0.0 }))
       .addFilter(invert())

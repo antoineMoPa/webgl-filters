@@ -1,4 +1,4 @@
-export { pipeline, Pipeline } from "./pipeline.js";
+export { glFilters, GLFilters } from "./pipeline.js";
 export { applyFilters } from "./renderer.js";
 
 export { brightness } from "./filters/brightness.js";

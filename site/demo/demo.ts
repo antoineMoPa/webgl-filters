@@ -1,5 +1,5 @@
 import {
-  pipeline,
+  glFilters,
   applyFilters,
   brightness,
   contrast,
@@ -26,17 +26,39 @@ let sourceWidth = 320;
 let sourceHeight = 240;
 
 function generateTestPattern(w: number, h: number): FilterImageData {
-  const data = new Uint8ClampedArray(w * h * 4);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      data[i] = ((x * 255) / w) | 0;
-      data[i + 1] = ((y * 255) / h) | 0;
-      data[i + 2] = (((x + y) * 128) / (w + h)) | 0;
-      data[i + 3] = 255;
-    }
+  // Draw gradient + circles onto a temp canvas, then read pixels
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d")!;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, "#1a1a2e");
+  grad.addColorStop(0.5, "#e94560");
+  grad.addColorStop(1, "#0f3460");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Bordered circles at various sizes for edge-detection visibility
+  const circles = [
+    { x: w * 0.25, y: h * 0.35, r: Math.min(w, h) * 0.18, fill: "#16213e", stroke: "#e94560" },
+    { x: w * 0.65, y: h * 0.3, r: Math.min(w, h) * 0.12, fill: "#e94560", stroke: "#ffffff" },
+    { x: w * 0.5, y: h * 0.7, r: Math.min(w, h) * 0.22, fill: "#0f3460", stroke: "#53d8fb" },
+    { x: w * 0.82, y: h * 0.65, r: Math.min(w, h) * 0.1, fill: "#ffffff", stroke: "#1a1a2e" },
+  ];
+  for (const { x, y, r, fill, stroke } of circles) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = stroke;
+    ctx.stroke();
   }
-  return { data, width: w, height: h };
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  return { data: new Uint8ClampedArray(imageData.data), width: w, height: h };
 }
 
 function drawToCanvas(canvas: HTMLCanvasElement, img: FilterImageData) {
@@ -204,7 +226,7 @@ for (const name of simpleFilters) {
 
 function renderPipeline() {
   const checked = pipelineChecks.querySelectorAll<HTMLInputElement>("input:checked");
-  const p = pipeline(gl);
+  const p = glFilters(gl);
   for (const cb of checked) {
     const def = filterDefs.find(d => d.name === cb.dataset.filter);
     if (def) p.addFilter(def.create());

@@ -2,17 +2,17 @@ import type { Filter, ImageData } from "./types.js";
 import { applyFilters } from "./renderer.js";
 
 /**
- * Chainable filter pipeline. Collects filters, then applies them
+ * Chainable filter chain. Collects filters, then applies them
  * as sequential GPU shader passes.
  *
  * Usage:
- *   const result = pipeline(gl)
+ *   const result = glFilters(gl)
  *     .addFilter(brightness({ amount: 20 }))
  *     .addFilter(saturate({ factor: 1.5 }))
  *     .addFilter(blur())
  *     .apply(sourceImage);
  */
-export class Pipeline {
+export class GLFilters {
   private filters: Filter[] = [];
   private gl: WebGLRenderingContext;
 
@@ -20,7 +20,7 @@ export class Pipeline {
     this.gl = gl;
   }
 
-  /** Append a filter to the pipeline. Returns `this` for chaining. */
+  /** Append a filter to the chain. Returns `this` for chaining. */
   addFilter(filter: Filter): this {
     this.filters.push(filter);
     return this;
@@ -32,7 +32,7 @@ export class Pipeline {
   }
 }
 
-/** Create a new pipeline bound to a WebGL context. */
-export function pipeline(gl: WebGLRenderingContext): Pipeline {
-  return new Pipeline(gl);
+/** Create a new filter chain bound to a WebGL context. */
+export function glFilters(gl: WebGLRenderingContext): GLFilters {
+  return new GLFilters(gl);
 }

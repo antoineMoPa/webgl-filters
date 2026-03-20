@@ -1,7 +1,7 @@
 {
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
-  "name": "webgl-filters",
+  "name": "glFilters",
   "includeVersion": true,
   "excludePrivate": true,
   "excludeInternal": true,

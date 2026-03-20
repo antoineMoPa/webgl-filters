@@ -1,4 +1,4 @@
-# webgl-filters
+# glFilters
 
 GPU-accelerated image filters using WebGL shaders. Every filter runs as a fragment shader — no CPU pixel loops.
 
@@ -11,7 +11,7 @@ npm install webgl-filters
 ## Usage
 
 ```ts
-import { pipeline, brightness, saturate, blur, invert, customShader } from "webgl-filters";
+import { glFilters, brightness, saturate, blur, invert, customShader } from "webgl-filters";
 
 // Browser: get GL context from a canvas
 const gl = canvas.getContext("webgl");
@@ -20,8 +20,8 @@ const gl = canvas.getContext("webgl");
 import createGL from "gl";
 const gl = createGL(width, height, { preserveDrawingBuffer: true });
 
-// Build a filter pipeline and apply it
-const result = pipeline(gl)
+// Build a filter chain and apply it
+const result = glFilters(gl)
   .addFilter(brightness({ amount: 0.1 }))
   .addFilter(saturate({ factor: 1.5 }))
   .addFilter(blur())
