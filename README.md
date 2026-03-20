@@ -2,6 +2,8 @@
 
 GPU-accelerated image filters using WebGL shaders. Every filter runs as a fragment shader — no CPU pixel loops.
 
+[API Docs](https://antoinemopa.github.io/webgl-filters/api/)
+
 ## Install
 
 ```bash

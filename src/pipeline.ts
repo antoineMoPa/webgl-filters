@@ -5,12 +5,14 @@ import { applyFilters } from "./renderer.js";
  * Chainable filter chain. Collects filters, then applies them
  * as sequential GPU shader passes.
  *
- * Usage:
- *   const result = glFilters(gl)
- *     .addFilter(brightness({ amount: 20 }))
- *     .addFilter(saturate({ factor: 1.5 }))
- *     .addFilter(blur())
- *     .apply(sourceImage);
+ * @example
+ * ```ts
+ * const result = glFilters(gl)
+ *   .addFilter(brightness({ amount: 20 }))
+ *   .addFilter(saturate({ factor: 1.5 }))
+ *   .addFilter(blur())
+ *   .apply(sourceImage);
+ * ```
  */
 export class GLFilters {
   private filters: Filter[] = [];
