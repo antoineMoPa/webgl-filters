@@ -42,6 +42,9 @@ const result = glFilters(gl)
 | `saturate({ factor })` | `factor`: float (1.0 = no change, 0 = grayscale) | Adjusts color saturation |
 | `invert()` | — | Inverts RGB channels |
 | `blur({ radius?, strength? })` | `radius`: px (default 2), `strength`: 0–1 (default 1) | Gaussian blur — radius sets kernel size, strength blends with original |
+| `threshold({ cutoff? })` | `cutoff`: 0–1 (default 0.5) | Binary black/white based on luminance |
+| `dilate({ radius? })` | `radius`: px (default 1) | Morphological dilation — expands bright regions |
+| `erode({ radius? })` | `radius`: px (default 1) | Morphological erosion — shrinks bright regions |
 | `sharpen()` | — | 5×5 sharpening |
 | `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array | Custom 5×5 convolution |
 | `customShader({ source, uniforms? })` | GLSL source + uniforms | User-defined shader |
