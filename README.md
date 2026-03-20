@@ -2,6 +2,12 @@
 
 GPU-accelerated image filters using WebGL shaders. Every filter runs as a fragment shader — no CPU pixel loops.
 
+## Install
+
+```bash
+npm install webgl-filters
+```
+
 ## Usage
 
 ```ts
