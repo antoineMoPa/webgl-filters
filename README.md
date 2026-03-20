@@ -34,6 +34,7 @@ const result = glFilters(gl)
 
 | Filter | Parameters | Description |
 |--------|-----------|-------------|
+| `alphaUnder({ r, g, b, a? })` | RGBA 0–255 (a defaults to 255) | Composites image over a solid background color |
 | `brightness({ amount })` | `amount`: float (0 = no change) | Adds to RGB channels |
 | `contrast({ factor })` | `factor`: float (1.0 = no change) | Scales around midpoint |
 | `saturate({ factor })` | `factor`: float (1.0 = no change, 0 = grayscale) | Adjusts color saturation |

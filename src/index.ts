@@ -14,6 +14,9 @@ export { invert } from "./filters/invert.js";
 
 export { convolve } from "./filters/convolve.js";
 
+export { alphaUnder } from "./filters/alphaUnder.js";
+export type { AlphaUnderParams } from "./filters/alphaUnder.js";
+
 export { blur } from "./filters/blur.js";
 export type { BlurParams } from "./filters/blur.js";
 export { sharpen } from "./filters/sharpen.js";
