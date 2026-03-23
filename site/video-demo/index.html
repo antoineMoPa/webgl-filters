@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>glFilters — Video Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; padding: 1.5rem; }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #8b949e; margin-bottom: 1.5rem; }
+
+    .source-section { margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    button { padding: 0.5rem 1rem; background: #21262d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: background 0.15s; }
+    button:hover { background: #30363d; }
+    button.active { background: #1f6feb; border-color: #58a6ff; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #file-input { display: none; }
+
+    .video-container { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .video-panel { flex: 1; min-width: 300px; }
+    .video-panel h3 { font-size: 0.9rem; color: #8b949e; margin-bottom: 0.5rem; }
+    video, canvas { width: 100%; max-width: 640px; border-radius: 6px; background: #000; display: block; }
+
+    .controls-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .controls-section h2 { font-size: 1rem; margin-bottom: 0.75rem; }
+    .filter-checks { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .filter-checks label { font-size: 0.85rem; cursor: pointer; }
+    .filter-checks input[type=checkbox] { accent-color: #58a6ff; margin-right: 0.25rem; }
+    .slider-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .slider-row label { font-size: 0.85rem; color: #8b949e; min-width: 80px; }
+    .slider-row input[type=range] { flex: 1; min-width: 100px; accent-color: #58a6ff; }
+    .slider-row .value { font-size: 0.8rem; color: #58a6ff; min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    .convolve-section { margin-top: 0.75rem; }
+    .kernel-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; max-width: 280px; }
+    .kernel-grid input { width: 100%; padding: 0.2rem; text-align: center; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 3px; font-size: 0.75rem; }
+    .custom-shader-section { margin-top: 0.75rem; }
+    textarea { width: 100%; height: 80px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 4px; padding: 0.5rem; font-family: monospace; font-size: 0.8rem; resize: vertical; }
+
+    .stats { font-size: 0.8rem; color: #3fb950; margin-top: 0.5rem; }
+    .actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>glFilters — Video Demo</h1>
+  <p class="subtitle">Real-time video filtering with compiled shader pipelines.</p>
+
+  <div class="source-section">
+    <button id="btn-webcam">Webcam</button>
+    <button id="btn-upload">Upload Video</button>
+    <button id="btn-stop" disabled>Stop</button>
+    <input type="file" accept="video/*" id="file-input">
+  </div>
+
+  <div class="video-container">
+    <div class="video-panel">
+      <h3>Original</h3>
+      <video id="source-video" muted playsinline></video>
+    </div>
+    <div class="video-panel">
+      <h3>Filtered</h3>
+      <div id="output-container"></div>
+    </div>
+  </div>
+
+  <div class="controls-section">
+    <h2>Filters</h2>
+    <div class="filter-checks" id="filter-checks"></div>
+    <div id="filter-sliders"></div>
+    <div class="convolve-section" id="convolve-section" style="display:none">
+      <div class="kernel-grid" id="kernel-grid"></div>
+    </div>
+    <div class="custom-shader-section" id="custom-shader-section" style="display:none">
+      <textarea id="custom-glsl">// Vignette effect
+vec4 color = texture2D(u_texture, v_texCoord);
+vec2 center = v_texCoord - 0.5;
+float dist = length(center);
+float vignette = smoothstep(0.5, 0.2, dist);
+gl_FragColor = vec4(color.rgb * vignette, color.a);</textarea>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="actions">
+      <button id="btn-apply">Apply Filters</button>
+    </div>
+  </div>
+
+  <script type="module" src="video-demo.js"></script>
+</body>
+</html>

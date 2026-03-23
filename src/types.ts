@@ -31,6 +31,14 @@ export type Kernel5x5 = [
   number, number, number, number, number,
 ];
 
+/** Any source that `gl.texImage2D` accepts natively. */
+export type TextureSource =
+  | ImageData
+  | HTMLVideoElement
+  | HTMLImageElement
+  | HTMLCanvasElement
+  | ImageBitmap;
+
 export interface ConvolutionOptions {
   kernel: Kernel5x5;
   /** Divisor applied after summing. Defaults to kernel sum (or 1 if sum is 0). */

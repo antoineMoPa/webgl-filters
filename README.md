@@ -15,21 +15,64 @@ npm install webgl-filters
 ```ts
 import { glFilters, brightness, saturate, blur, invert, customShader } from "webgl-filters";
 
-// Browser: get GL context from a canvas
-const gl = canvas.getContext("webgl");
-
-// Node: install the `gl` package for headless WebGL
-// npm install gl
-import createGL from "gl";
-const gl = createGL(width, height, { preserveDrawingBuffer: true });
-
-// Build a filter chain and apply it
-const result = glFilters(gl)
+// Build a filter chain and apply it to an image
+const result = glFilters()
   .addFilter(brightness({ amount: 0.1 }))
   .addFilter(saturate({ factor: 1.5 }))
   .addFilter(blur())
   .apply(imageData);
 // result is { data: Uint8ClampedArray, width, height }
+```
+
+### Video filtering
+
+Use `.compile()` to cache shader programs, then `.apply()` a `<video>` element. This renders to a canvas at full frame rate with no CPU readback. Video processing is not supported server-side, but you can manually apply filters to video frames if desired.
+
+```ts
+import { glFilters, brightness, blur } from "webgl-filters";
+
+const filter = glFilters()
+  .addFilter(brightness({ amount: 0.1 }))
+  .addFilter(blur())
+  .compile();
+
+const video = document.getElementById("my-video") as HTMLVideoElement;
+const canvas = filter.apply(video); // returns a <canvas> with a rAF loop
+document.body.appendChild(canvas);
+
+// Later: stop the loop and release GPU resources
+filter.stop();
+filter.dispose();
+```
+
+`.compile()` also speeds up batch image processing by reusing compiled shaders:
+
+```ts
+const filter = glFilters()
+  .addFilter(brightness({ amount: 0.1 }))
+  .compile();
+
+const r1 = filter.apply(image1);
+const r2 = filter.apply(image2);
+filter.dispose();
+```
+
+### Providing your own WebGL context
+
+The `gl` parameter is optional. If omitted, a canvas and context are created automatically. You can still pass one explicitly:
+
+```ts
+const gl = canvas.getContext("webgl");
+const result = glFilters(gl)
+  .addFilter(brightness({ amount: 0.1 }))
+  .apply(imageData);
+```
+
+For Node.js (headless), install the `gl` package:
+
+```ts
+import createGL from "gl";
+const gl = createGL(width, height, { preserveDrawingBuffer: true });
 ```
 
 ## Filters
