@@ -1,6 +1,6 @@
 {
   "name": "webgl-filters",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "GPU-accelerated image filters using WebGL shaders",
   "type": "module",
   "main": "./dist/index.cjs",
