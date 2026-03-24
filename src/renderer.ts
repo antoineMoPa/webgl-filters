@@ -77,7 +77,7 @@ function createFramebufferTarget(gl: WebGLRenderingContext, width: number, heigh
 
 /**
  * Applies a list of filters to an image using WebGL.
- * Each filter is a GPU shader pass — no CPU pixel loops.
+ * Each filter is a GPU shader pass.
  *
  * Accepts any `TextureSource`: `ImageData`, `HTMLImageElement`,
  * `HTMLCanvasElement`, `ImageBitmap`, or `HTMLVideoElement`.

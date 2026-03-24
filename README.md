@@ -1,6 +1,6 @@
 # glFilters
 
-GPU-accelerated image filters using WebGL shaders. Every filter runs as a fragment shader — no CPU pixel loops.
+GPU-accelerated image filters using WebGL shaders. Every filter runs as a fragment shader.
 
 [API Docs](https://antoinemopa.github.io/webgl-filters/api/)
 
@@ -26,7 +26,7 @@ const result = glFilters()
 
 ### Direct image/canvas input
 
-`apply()` accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap` directly — no need to manually extract pixel data:
+`apply()` accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap` directly:
 
 ```ts
 // From an <img> element
