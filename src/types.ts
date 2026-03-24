@@ -39,6 +39,16 @@ export type TextureSource =
   | HTMLCanvasElement
   | ImageBitmap;
 
+/**
+ * Any image source accepted by the one-shot `apply()` methods.
+ * This is `TextureSource` without `HTMLVideoElement` — use `.compile()` for video.
+ */
+export type ImageSource =
+  | ImageData
+  | HTMLImageElement
+  | HTMLCanvasElement
+  | ImageBitmap;
+
 export interface ConvolutionOptions {
   kernel: Kernel5x5;
   /** Divisor applied after summing. Defaults to kernel sum (or 1 if sum is 0). */

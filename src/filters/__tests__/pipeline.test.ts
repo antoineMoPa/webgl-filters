@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { glFilters, CompiledFilter } from "../../pipeline.js";
+import { glFilters, CompiledFilter, loadImage } from "../../pipeline.js";
 import { brightness } from "../brightness.js";
 import { invert } from "../invert.js";
 import { contrast } from "../contrast.js";
@@ -41,6 +41,37 @@ describe("glFilters", () => {
     // identity contrast + identity brightness + double invert = original
     const [r] = pixel(result, 0);
     expect(r).toBeCloseTo(128, -1);
+  });
+});
+
+describe("glFilters with ImageSource", () => {
+  const gl = createContext();
+
+  it("accepts ImageData (existing behavior)", () => {
+    const img = solidImage(2, 2, 100, 150, 200);
+    const result = glFilters(gl)
+      .addFilter(brightness({ amount: 0.0 }))
+      .apply(img);
+    const [r, g, b] = pixel(result, 0);
+    expect(r).toBeCloseTo(100, -1);
+    expect(g).toBeCloseTo(150, -1);
+    expect(b).toBeCloseTo(200, -1);
+  });
+});
+
+describe("applyFilters with TextureSource", () => {
+  it("still works with ImageData", () => {
+    const gl = createContext();
+    const img = solidImage(4, 4, 80, 80, 80);
+    const result = applyFilters(gl, img, [brightness({ amount: 0.1 })]);
+    const [r] = pixel(result, 0);
+    expect(r).toBeGreaterThan(100);
+  });
+});
+
+describe("loadImage", () => {
+  it("is exported as a function", () => {
+    expect(typeof loadImage).toBe("function");
   });
 });
 

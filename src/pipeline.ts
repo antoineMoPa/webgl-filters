@@ -1,4 +1,4 @@
-import type { Filter, ImageData } from "./types.js";
+import type { Filter, ImageData, ImageSource } from "./types.js";
 import { applyFilters, GLRenderer, getSourceDimensions } from "./renderer.js";
 
 /**
@@ -24,15 +24,16 @@ export class CompiledFilter {
   }
 
   /**
-   * Apply filters to an image and return the result as ImageData.
+   * Apply filters to an image source and return the result as ImageData.
+   * Accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap`.
    */
-  apply(source: ImageData): ImageData;
+  apply(source: ImageSource): ImageData;
   /**
    * Apply filters to a video element and return a canvas that updates each frame.
    * Call `.stop()` to pause the animation loop, `.dispose()` to clean up.
    */
   apply(source: HTMLVideoElement): HTMLCanvasElement;
-  apply(source: ImageData | HTMLVideoElement): ImageData | HTMLCanvasElement {
+  apply(source: ImageSource | HTMLVideoElement): ImageData | HTMLCanvasElement {
     if (this.disposed) throw new Error("CompiledFilter has been disposed");
 
     // Video path
@@ -41,10 +42,20 @@ export class CompiledFilter {
     }
 
     // Image path
-    return this.applyImage(source as ImageData);
+    return this.applyImage(source as ImageSource);
   }
 
-  private applyImage(source: ImageData): ImageData {
+  /**
+   * Load an image from a URL and apply filters.
+   * Returns a Promise that resolves to the filtered `ImageData`.
+   */
+  async applyAsync(source: string): Promise<ImageData> {
+    if (this.disposed) throw new Error("CompiledFilter has been disposed");
+    const img = await loadImage(source);
+    return this.applyImage(img);
+  }
+
+  private applyImage(source: ImageSource): ImageData {
     if (!this.renderer) {
       const gl = this.defaultGl ?? createOffscreenGL();
       this.renderer = new GLRenderer(gl, this.filters);
@@ -130,10 +141,22 @@ export class GLFilters {
     return this;
   }
 
-  /** Run all filters as GPU passes and return the result. */
-  apply(input: ImageData): ImageData {
+  /**
+   * Run all filters as GPU passes and return the result.
+   * Accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap`.
+   */
+  apply(input: ImageSource): ImageData {
     const gl = this.gl ?? createOffscreenGL();
     return applyFilters(gl, input, this.filters);
+  }
+
+  /**
+   * Load an image from a URL and apply filters.
+   * Returns a Promise that resolves to the filtered `ImageData`.
+   */
+  async applyAsync(source: string): Promise<ImageData> {
+    const img = await loadImage(source);
+    return this.apply(img);
   }
 
   /**
@@ -173,4 +196,18 @@ function createOffscreenGL(): WebGLRenderingContext {
 /** Create a new filter chain, optionally bound to a WebGL context. */
 export function glFilters(gl?: WebGLRenderingContext | null): GLFilters {
   return new GLFilters(gl);
+}
+
+/**
+ * Load an image from a URL or data URI.
+ * Returns a Promise that resolves to the loaded `HTMLImageElement`.
+ */
+export function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+    img.src = url;
+  });
 }

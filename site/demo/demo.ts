@@ -9,6 +9,7 @@ import {
   sharpen,
   convolve,
   customShader,
+  loadImage,
 } from "../../src/index.js";
 import type { ImageData as FilterImageData, Filter, Kernel5x5 } from "../../src/types.js";
 
@@ -272,7 +273,7 @@ function renderAll() {
 }
 
 // ─── Image loading ───────────────────────────────────────────────────────
-function loadImage(src: string | File) {
+function loadFromFile(src: string | File) {
   const img = new Image();
   img.crossOrigin = "anonymous";
   const url = typeof src === "string" ? src : URL.createObjectURL(src);
@@ -300,6 +301,38 @@ function loadImage(src: string | File) {
   img.src = url;
 }
 
+// URL loading — demonstrates loadImage() + apply(canvas)
+const urlInput = document.getElementById("url-input") as HTMLInputElement;
+const urlBtn = document.getElementById("url-load-btn") as HTMLButtonElement;
+if (urlBtn) {
+  urlBtn.addEventListener("click", async () => {
+    const url = urlInput?.value.trim();
+    if (!url) return;
+    try {
+      const img = await loadImage(url);
+      const maxDim = 512;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      const tmpCanvas = document.createElement("canvas");
+      tmpCanvas.width = w;
+      tmpCanvas.height = h;
+      tmpCanvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      // Demonstrate: apply() now accepts a canvas directly (no getImageData needed)
+      sourceImage = glFilters(gl).apply(tmpCanvas);
+      sourceWidth = sourceImage.width;
+      sourceHeight = sourceImage.height;
+      renderAll();
+    } catch (e) {
+      alert(`Failed to load image: ${(e as Error).message}`);
+    }
+  });
+}
+
 // Drag & drop / file input
 const dropZone = document.getElementById("drop-zone")!;
 const fileInput = document.getElementById("file-input") as HTMLInputElement;
@@ -310,11 +343,11 @@ dropZone.addEventListener("drop", (e) => {
   e.preventDefault();
   dropZone.classList.remove("dragover");
   const file = e.dataTransfer?.files[0];
-  if (file) loadImage(file);
+  if (file) loadFromFile(file);
 });
 fileInput.addEventListener("change", () => {
   const file = fileInput.files?.[0];
-  if (file) loadImage(file);
+  if (file) loadFromFile(file);
 });
 
 // Start with test pattern

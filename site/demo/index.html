@@ -31,6 +31,10 @@
     #drop-zone { border: 2px dashed #30363d; border-radius: 8px; padding: 1rem; text-align: center; color: #8b949e; margin-bottom: 1.5rem; cursor: pointer; transition: border-color 0.15s; }
     #drop-zone:hover, #drop-zone.dragover { border-color: #58a6ff; }
     #drop-zone input { display: none; }
+    .url-load { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .url-load input[type=text] { flex: 1; padding: 0.5rem 0.75rem; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; font-size: 0.9rem; }
+    .url-load button { padding: 0.5rem 1rem; background: #238636; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    .url-load button:hover { background: #2ea043; }
   </style>
 </head>
 <body>
@@ -40,6 +44,11 @@
   <div id="drop-zone">
     <p>Drop an image here or click to upload</p>
     <input type="file" accept="image/*" id="file-input">
+  </div>
+
+  <div class="url-load">
+    <input type="text" id="url-input" placeholder="Or paste an image URL…">
+    <button id="url-load-btn">Load</button>
   </div>
 
   <div class="grid" id="filter-grid"></div>

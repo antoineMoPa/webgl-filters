@@ -78,13 +78,16 @@ function createFramebufferTarget(gl: WebGLRenderingContext, width: number, heigh
 /**
  * Applies a list of filters to an image using WebGL.
  * Each filter is a GPU shader pass — no CPU pixel loops.
+ *
+ * Accepts any `TextureSource`: `ImageData`, `HTMLImageElement`,
+ * `HTMLCanvasElement`, `ImageBitmap`, or `HTMLVideoElement`.
  */
 export function applyFilters(
   gl: WebGLRenderingContext,
-  input: ImageData,
+  input: TextureSource,
   filters: Filter[],
 ): ImageData {
-  const { width, height } = input;
+  const [width, height] = getSourceDimensions(input);
 
   // Fullscreen quad (two triangles)
   const quadBuffer = gl.createBuffer();
@@ -92,7 +95,8 @@ export function applyFilters(
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
   // Upload source image as texture
-  const sourceTexture = createTexture(gl, width, height, input.data);
+  const sourceTexture = createTexture(gl, width, height);
+  uploadSource(gl, sourceTexture, input);
 
   // Ping-pong framebuffers
   const targets = [

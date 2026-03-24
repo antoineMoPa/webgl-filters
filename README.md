@@ -24,6 +24,42 @@ const result = glFilters()
 // result is { data: Uint8ClampedArray, width, height }
 ```
 
+### Direct image/canvas input
+
+`apply()` accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap` directly — no need to manually extract pixel data:
+
+```ts
+// From an <img> element
+const img = document.querySelector("img");
+const result = glFilters()
+  .addFilter(brightness({ amount: 0.1 }))
+  .apply(img);
+
+// From a <canvas> element
+const canvas = document.querySelector("canvas");
+const result = glFilters()
+  .addFilter(blur())
+  .apply(canvas);
+```
+
+### Filtering from a URL
+
+Use `applyAsync()` to load an image from a URL and apply filters in one step:
+
+```ts
+const result = await glFilters()
+  .addFilter(brightness({ amount: 0.1 }))
+  .addFilter(saturate({ factor: 1.5 }))
+  .applyAsync("/photo.jpg");
+```
+
+A standalone `loadImage()` helper is also exported:
+
+```ts
+import { loadImage } from "webgl-filters";
+const img = await loadImage("/photo.jpg");
+```
+
 ### Video filtering
 
 Use `.compile()` to cache shader programs, then `.apply()` a `<video>` element. This renders to a canvas at full frame rate with no CPU readback. Video processing is not supported server-side, but you can manually apply filters to video frames if desired.
