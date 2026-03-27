@@ -29,5 +29,6 @@ ${lines.join("\n")}
 }
 `,
     uniforms: {},
+    _debugLabel: `dilate(${JSON.stringify({ radius: r })})`,
   };
 }

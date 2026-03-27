@@ -43,5 +43,6 @@ ${source}
 }
 `,
     uniforms,
+    _debugLabel: `customShader(${JSON.stringify(options)})`,
   };
 }

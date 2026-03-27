@@ -29,5 +29,6 @@ ${lines.join("\n")}
 }
 `,
     uniforms: {},
+    _debugLabel: `erode(${JSON.stringify({ radius: r })})`,
   };
 }

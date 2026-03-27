@@ -34,5 +34,6 @@ ${lines.join("\n")}
 }
 `,
     uniforms: {},
+    _debugLabel: `convolve({\n  kernel: [\n${[0,1,2,3,4].map(r => "    " + kernel.slice(r*5, r*5+5).join(", ")).join(",\n")},\n  ]${options.divisor != null ? `,\n  divisor: ${options.divisor}` : ""}${bias !== 0 ? `,\n  bias: ${bias}` : ""}\n})`,
   };
 }

@@ -1,5 +1,6 @@
 import type { Filter, ImageData, ImageSource } from "./types.js";
 import { applyFilters, GLRenderer, getSourceDimensions } from "./renderer.js";
+import { generateDebugHTML, imageSourceToDataURI } from "./debug.js";
 
 /**
  * Compiled filter chain. Caches shader programs for efficient reuse
@@ -141,6 +142,11 @@ export class GLFilters {
     return this;
   }
 
+  /** Returns a copy of the current filter list. */
+  getFilters(): Filter[] {
+    return [...this.filters];
+  }
+
   /**
    * Run all filters as GPU passes and return the result.
    * Accepts `ImageData`, `HTMLImageElement`, `HTMLCanvasElement`, or `ImageBitmap`.
@@ -157,6 +163,20 @@ export class GLFilters {
   async applyAsync(source: string): Promise<ImageData> {
     const img = await loadImage(source);
     return this.apply(img);
+  }
+
+  /**
+   * Generate a self-contained debug HTML page that visualizes each filter step.
+   * Logs a data URI to the console that can be opened in a browser.
+   */
+  debug(input: ImageSource): void {
+    const dataURI = imageSourceToDataURI(input);
+    const html = generateDebugHTML(this.filters, dataURI);
+    const bytes = new TextEncoder().encode(html);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    console.log(`data:text/html;base64,${base64}`);
   }
 
   /**

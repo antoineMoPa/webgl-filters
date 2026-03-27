@@ -20,6 +20,8 @@ export interface ImageData {
 export interface Filter {
   fragmentSource: string;
   uniforms: Record<string, number | number[]>;
+  /** Debug metadata: records the factory call that created this filter. */
+  _debugLabel?: string;
 }
 
 /** A 5x5 convolution kernel (25 elements, row-major) */

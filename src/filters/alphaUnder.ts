@@ -27,5 +27,6 @@ void main() {
 }
 `,
     uniforms: { u_bgR: r / 255, u_bgG: g / 255, u_bgB: b / 255, u_bgA: a / 255 },
+    _debugLabel: `alphaUnder(${JSON.stringify({ r, g, b, a })})`,
   };
 }

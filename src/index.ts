@@ -30,6 +30,8 @@ export { sharpen } from "./filters/sharpen.js";
 export { threshold } from "./filters/threshold.js";
 export type { ThresholdParams } from "./filters/threshold.js";
 
+export { sobel } from "./filters/sobel.js";
+
 export { customShader } from "./filters/customShader.js";
 
 export type {

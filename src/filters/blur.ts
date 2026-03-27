@@ -62,5 +62,5 @@ export function blur(params: BlurParams = {}): Filter {
   const r = Math.max(1, Math.round(radius));
   const s = Math.max(0, Math.min(1, strength));
 
-  return { fragmentSource: blurShader(r, s), uniforms: {} };
+  return { fragmentSource: blurShader(r, s), uniforms: {}, _debugLabel: `blur(${JSON.stringify({ radius: r, strength: s })})` };
 }

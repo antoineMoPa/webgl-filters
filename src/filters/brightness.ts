@@ -17,5 +17,6 @@ void main() {
 }
 `,
     uniforms: { u_amount: params.amount },
+    _debugLabel: `brightness(${JSON.stringify(params)})`,
   };
 }

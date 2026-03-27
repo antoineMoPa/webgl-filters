@@ -11,7 +11,10 @@
     .subtitle { color: #8b949e; margin-bottom: 1.5rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
     .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
-    .card h3 { margin-bottom: 0.5rem; font-size: 1rem; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .card h3, .card-header h2 { font-size: 1rem; margin: 0; }
+    .debug-btn { padding: 0.2rem 0.5rem; font-size: 0.7rem; background: #30363d; color: #8b949e; border: 1px solid #484f58; border-radius: 4px; cursor: pointer; }
+    .debug-btn:hover { background: #484f58; color: #e6edf3; }
     .card canvas { width: 100%; height: auto; border-radius: 4px; background: #000; }
     .controls { margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .controls label { font-size: 0.85rem; color: #8b949e; min-width: 60px; }
@@ -22,7 +25,8 @@
     .kernel-grid input { width: 100%; padding: 0.2rem; text-align: center; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 3px; font-size: 0.75rem; }
     textarea { width: 100%; height: 100px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 4px; padding: 0.5rem; font-family: monospace; font-size: 0.8rem; resize: vertical; margin: 0.5rem 0; }
     .pipeline-section { margin-top: 1.5rem; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
-    .pipeline-section h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+    .pipeline-section .card-header { margin-bottom: 0.75rem; }
+    .pipeline-section .card-header h2 { font-size: 1.1rem; }
     .pipeline-checks { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem; }
     .pipeline-checks label { font-size: 0.85rem; cursor: pointer; }
     .pipeline-checks input { accent-color: #58a6ff; margin-right: 0.25rem; }
@@ -54,7 +58,10 @@
   <div class="grid" id="filter-grid"></div>
 
   <div class="pipeline-section">
-    <h2>Pipeline (chained filters)</h2>
+    <div class="card-header">
+      <h2>Pipeline (chained filters)</h2>
+      <button class="debug-btn" id="pipeline-debug-btn">Debug</button>
+    </div>
     <div class="pipeline-checks" id="pipeline-checks"></div>
     <div class="pipeline-result">
       <div>

@@ -18,5 +18,6 @@ void main() {
 }
 `,
     uniforms: { u_factor: params.factor },
+    _debugLabel: `saturate(${JSON.stringify(params)})`,
   };
 }

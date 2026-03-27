@@ -11,5 +11,7 @@ const SHARPEN_5X5: Kernel5x5 = [
 
 /** Applies a 5x5 sharpening filter. */
 export function sharpen(): Filter {
-  return convolve({ kernel: SHARPEN_5X5, divisor: 5 });
+  const filter = convolve({ kernel: SHARPEN_5X5, divisor: 5 });
+  filter._debugLabel = "sharpen()";
+  return filter;
 }

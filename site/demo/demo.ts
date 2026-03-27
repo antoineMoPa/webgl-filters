@@ -11,6 +11,7 @@ import {
   customShader,
   loadImage,
 } from "../../src/index.js";
+import { generateDebugHTML, imageSourceToDataURI } from "../../src/debug.js";
 import type { ImageData as FilterImageData, Filter, Kernel5x5 } from "../../src/types.js";
 
 // ─── WebGL context (shared) ──────────────────────────────────────────────
@@ -190,6 +191,14 @@ function setupSlider(container: HTMLElement, onChange: () => void) {
   });
 }
 
+// ─── Debug helper ─────────────────────────────────────────────────────────
+function openDebug(filters: Filter[]) {
+  const dataURI = imageSourceToDataURI(sourceImage);
+  const html = generateDebugHTML(filters, dataURI);
+  const blob = new Blob([html], { type: "text/html" });
+  window.open(URL.createObjectURL(blob), "_blank");
+}
+
 // ─── Build the UI ────────────────────────────────────────────────────────
 const grid = document.getElementById("filter-grid")!;
 const cards: { def: FilterDef; canvas: HTMLCanvasElement; timing: HTMLElement }[] = [];
@@ -198,9 +207,17 @@ for (const def of filterDefs) {
   const card = document.createElement("div");
   card.className = "card";
 
+  const header = document.createElement("div");
+  header.className = "card-header";
   const h3 = document.createElement("h3");
   h3.textContent = def.name;
-  card.appendChild(h3);
+  header.appendChild(h3);
+  const debugBtn = document.createElement("button");
+  debugBtn.className = "debug-btn";
+  debugBtn.textContent = "Debug";
+  debugBtn.addEventListener("click", () => openDebug([def.create()]));
+  header.appendChild(debugBtn);
+  card.appendChild(header);
 
   const canvas = document.createElement("canvas");
   canvas.width = sourceWidth;
@@ -229,6 +246,8 @@ const pipelineChecks = document.getElementById("pipeline-checks")!;
 const pipelineCanvas = document.getElementById("pipeline-canvas") as HTMLCanvasElement;
 const pipelineTiming = document.getElementById("pipeline-timing")!;
 
+document.getElementById("pipeline-debug-btn")!.addEventListener("click", () => openDebug(getPipelineFilters()));
+
 const simpleFilters = ["Brightness", "Contrast", "Saturate", "Invert", "Blur", "Sharpen (5x5)"];
 for (const name of simpleFilters) {
   const label = document.createElement("label");
@@ -241,16 +260,23 @@ for (const name of simpleFilters) {
   pipelineChecks.appendChild(label);
 }
 
-function renderPipeline() {
+function getPipelineFilters(): Filter[] {
   const checked = pipelineChecks.querySelectorAll<HTMLInputElement>("input:checked");
-  const p = glFilters(gl);
+  const filters: Filter[] = [];
   for (const cb of checked) {
     const def = filterDefs.find(d => d.name === cb.dataset.filter);
-    if (def) p.addFilter(def.create());
+    if (def) filters.push(def.create());
   }
+  return filters;
+}
+
+function renderPipeline() {
+  const filters = getPipelineFilters();
+  const p = glFilters(gl);
+  for (const f of filters) p.addFilter(f);
   const { result, ms } = timed(() => p.apply(sourceImage));
   drawToCanvas(pipelineCanvas, result);
-  pipelineTiming.textContent = `${ms.toFixed(2)} ms (${checked.length} filter${checked.length !== 1 ? "s" : ""})`;
+  pipelineTiming.textContent = `${ms.toFixed(2)} ms (${filters.length} filter${filters.length !== 1 ? "s" : ""})`;
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────

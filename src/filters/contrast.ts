@@ -17,5 +17,6 @@ void main() {
 }
 `,
     uniforms: { u_factor: params.factor },
+    _debugLabel: `contrast(${JSON.stringify(params)})`,
   };
 }

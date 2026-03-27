@@ -19,5 +19,6 @@ void main() {
 }
 `,
     uniforms: { u_cutoff: cutoff },
+    _debugLabel: `threshold(${JSON.stringify({ cutoff })})`,
   };
 }
