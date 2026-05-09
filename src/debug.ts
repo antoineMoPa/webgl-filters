@@ -35,7 +35,7 @@ function generateInitialCode(filters: Filter[]): string {
 
   for (const f of filters) {
     if (f._debugLabel) {
-      lines.push(`chain.addFilter(${f._debugLabel});`);
+      lines.push(`chain.addFilter(${formatDebugLabel(f._debugLabel)});`);
     } else {
       // Fallback for filters without debug labels
       const src = f.fragmentSource.trim();
@@ -48,6 +48,40 @@ function generateInitialCode(filters: Filter[]): string {
 
   lines.push("return chain;");
   return lines.join("\n");
+}
+
+function formatDebugLabel(label: string): string {
+  const customShaderOptions = parseCustomShaderDebugLabel(label);
+  if (!customShaderOptions) return label;
+
+  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms);
+}
+
+function parseCustomShaderDebugLabel(label: string): { source: string; uniforms?: Record<string, number | number[]> } | null {
+  if (!label.startsWith("customShader(") || !label.endsWith(")")) return null;
+
+  try {
+    const options = JSON.parse(label.slice("customShader(".length, -1));
+    if (!options || typeof options.source !== "string") return null;
+    return options;
+  } catch {
+    return null;
+  }
+}
+
+function formatCustomShaderCall(source: string, uniforms?: Record<string, number | number[]>): string {
+  const uniformsLine = uniforms && Object.keys(uniforms).length > 0
+    ? `,\n  uniforms: ${JSON.stringify(uniforms)}`
+    : "";
+
+  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}\n})`;
+}
+
+function escapeTemplateLiteral(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
 }
 
 /**
@@ -214,7 +248,7 @@ function regenerateCode(filters) {
   const lines = ["const chain = glFilters();"];
   for (const f of filters) {
     if (f._debugLabel) {
-      lines.push("chain.addFilter(" + f._debugLabel + ");");
+      lines.push("chain.addFilter(" + formatDebugLabel(f._debugLabel) + ");");
     } else {
       const u = Object.keys(f.uniforms).length > 0 ? JSON.stringify(f.uniforms) : "{}";
       lines.push("chain.addFilter({ fragmentSource: \`" + f.fragmentSource.trim() + "\`, uniforms: " + u + " });");
@@ -222,6 +256,40 @@ function regenerateCode(filters) {
   }
   lines.push("return chain;");
   return lines.join("\\n");
+}
+
+function formatDebugLabel(label) {
+  const customShaderOptions = parseCustomShaderDebugLabel(label);
+  if (!customShaderOptions) return label;
+
+  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms);
+}
+
+function parseCustomShaderDebugLabel(label) {
+  if (!label.startsWith("customShader(") || !label.endsWith(")")) return null;
+
+  try {
+    const options = JSON.parse(label.slice("customShader(".length, -1));
+    if (!options || typeof options.source !== "string") return null;
+    return options;
+  } catch {
+    return null;
+  }
+}
+
+function formatCustomShaderCall(source, uniforms) {
+  const uniformsLine = uniforms && Object.keys(uniforms).length > 0
+    ? ",\\n  uniforms: " + JSON.stringify(uniforms)
+    : "";
+
+  return "customShader({\\n  source: \`\\n" + escapeTemplateLiteral(source) + "\\n  \`" + uniformsLine + "\\n})";
+}
+
+function escapeTemplateLiteral(value) {
+  return value
+    .replaceAll(${JSON.stringify("\\")}, ${JSON.stringify("\\\\")})
+    .replaceAll(${JSON.stringify("`")}, ${JSON.stringify("\\`")})
+    .replaceAll(${JSON.stringify("${")}, ${JSON.stringify("\\${")});
 }
 
 function deleteFilter(filterIndex) {

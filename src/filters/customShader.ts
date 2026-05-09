@@ -43,6 +43,20 @@ ${source}
 }
 `,
     uniforms,
-    _debugLabel: `customShader(${JSON.stringify(options)})`,
+    _debugLabel: formatCustomShaderDebugLabel(source, uniforms),
   };
+}
+
+function formatCustomShaderDebugLabel(source: string, uniforms: Record<string, number | number[]>): string {
+  const hasUniforms = Object.keys(uniforms).length > 0;
+  const uniformsLine = hasUniforms ? `,\n  uniforms: ${JSON.stringify(uniforms)}` : "";
+
+  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}\n})`;
+}
+
+function escapeTemplateLiteral(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
 }
