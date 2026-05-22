@@ -39,6 +39,7 @@ export type {
   ImageData,
   ImageSource,
   TextureSource,
+  TextureUniformValue,
   Kernel5x5,
   ConvolutionOptions,
 } from "./types.js";

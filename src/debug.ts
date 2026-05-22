@@ -54,10 +54,14 @@ function formatDebugLabel(label: string): string {
   const customShaderOptions = parseCustomShaderDebugLabel(label);
   if (!customShaderOptions) return label;
 
-  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms);
+  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms, customShaderOptions.textures);
 }
 
-function parseCustomShaderDebugLabel(label: string): { source: string; uniforms?: Record<string, number | number[]> } | null {
+function parseCustomShaderDebugLabel(label: string): {
+  source: string;
+  uniforms?: Record<string, number | number[]>;
+  textures?: Record<string, string>;
+} | null {
   if (!label.startsWith("customShader(") || !label.endsWith(")")) return null;
 
   try {
@@ -69,12 +73,19 @@ function parseCustomShaderDebugLabel(label: string): { source: string; uniforms?
   }
 }
 
-function formatCustomShaderCall(source: string, uniforms?: Record<string, number | number[]>): string {
+function formatCustomShaderCall(
+  source: string,
+  uniforms?: Record<string, number | number[]>,
+  textures?: Record<string, string>,
+): string {
   const uniformsLine = uniforms && Object.keys(uniforms).length > 0
     ? `,\n  uniforms: ${JSON.stringify(uniforms)}`
     : "";
+  const texturesLine = textures && Object.keys(textures).length > 0
+    ? `,\n  textures: ${JSON.stringify(textures)}`
+    : "";
 
-  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}\n})`;
+  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}${texturesLine}\n})`;
 }
 
 function escapeTemplateLiteral(value: string): string {
@@ -171,7 +182,8 @@ export function generateDebugHTML(
 </div>
 
 <script type="module">
-import * as lib from "https://unpkg.com/webgl-filters/dist/index.js";
+const lib = window.opener?.webglFiltersDebugLib
+  ?? await import("https://unpkg.com/webgl-filters/dist/index.js");
 
 const FRAGMENT_HEADER = \`precision mediump float;
 uniform sampler2D u_texture;
@@ -225,6 +237,8 @@ function evalCode(code) {
   );
 }
 
+let renderRunId = 0;
+
 function runCode() {
   if (!img) return;
   try {
@@ -237,7 +251,7 @@ function runCode() {
       throw new Error("Code must return a glFilters() chain or a Filter array");
     }
     errorBar.style.display = "none";
-    renderSteps();
+    void renderSteps();
   } catch (e) {
     errorBar.textContent = e.message;
     errorBar.style.display = "block";
@@ -262,7 +276,7 @@ function formatDebugLabel(label) {
   const customShaderOptions = parseCustomShaderDebugLabel(label);
   if (!customShaderOptions) return label;
 
-  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms);
+  return formatCustomShaderCall(customShaderOptions.source, customShaderOptions.uniforms, customShaderOptions.textures);
 }
 
 function parseCustomShaderDebugLabel(label) {
@@ -277,12 +291,15 @@ function parseCustomShaderDebugLabel(label) {
   }
 }
 
-function formatCustomShaderCall(source, uniforms) {
+function formatCustomShaderCall(source, uniforms, textures) {
   const uniformsLine = uniforms && Object.keys(uniforms).length > 0
     ? ",\\n  uniforms: " + JSON.stringify(uniforms)
     : "";
+  const texturesLine = textures && Object.keys(textures).length > 0
+    ? ",\\n  textures: " + JSON.stringify(textures)
+    : "";
 
-  return "customShader({\\n  source: \`\\n" + escapeTemplateLiteral(source) + "\\n  \`" + uniformsLine + "\\n})";
+  return "customShader({\\n  source: \`\\n" + escapeTemplateLiteral(source) + "\\n  \`" + uniformsLine + texturesLine + "\\n})";
 }
 
 function escapeTemplateLiteral(value) {
@@ -300,7 +317,8 @@ function deleteFilter(filterIndex) {
   runCode();
 }
 
-function renderSteps() {
+async function renderSteps() {
+  const runId = ++renderRunId;
   stepsEl.innerHTML = "";
   headerBar.textContent = "webgl-filters debug \\u2014 " + currentFilters.length + " filter step" + (currentFilters.length !== 1 ? "s" : "");
 
@@ -312,7 +330,8 @@ function renderSteps() {
     try {
       const chain = lib.glFilters();
       for (let j = 0; j <= i; j++) chain.addFilter(currentFilters[j]);
-      const result = chain.apply(img);
+      const result = await chain.applyAsync(img);
+      if (runId !== renderRunId) return;
       const c = document.createElement("canvas");
       c.width = result.width;
       c.height = result.height;

@@ -126,7 +126,7 @@ const gl = createGL(width, height, { preserveDrawingBuffer: true });
 | `erode({ radius? })` | `radius`: px (default 1) | Morphological erosion — shrinks bright regions |
 | `sharpen()` | — | 5×5 sharpening |
 | `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array | Custom 5×5 convolution |
-| `customShader({ source, uniforms? })` | GLSL source + uniforms | User-defined shader |
+| `customShader({ source, uniforms?, textures? })` | GLSL source + uniforms + sampler2D inputs | User-defined shader |
 
 ## Custom Shaders
 
@@ -136,6 +136,12 @@ Write GLSL that runs per-pixel. You get these built-in uniforms for free:
 - `v_texCoord` — current pixel's texture coordinate (vec2)
 - `u_resolution` — image size in pixels (vec2)
 - `u_texelSize` — `1.0 / u_resolution` (vec2)
+
+Pass additional image inputs with `textures`. Each key becomes a `sampler2D`
+uniform sampled in the same normalized coordinate space as `u_texture`.
+Texture values can be URLs with `applyAsync()`, or preloaded
+`HTMLImageElement`, `HTMLCanvasElement`, `ImageBitmap`, or `ImageData` values
+with either `apply()` or `applyAsync()`.
 
 ```ts
 const sepia = customShader({
@@ -151,6 +157,28 @@ const sepia = customShader({
   `,
   uniforms: { u_tone: 1.0 },
 });
+```
+
+```ts
+const composite = await glFilters()
+  .addFilter(customShader({
+    source: `
+      vec4 base = texture2D(u_texture, v_texCoord);
+      vec4 overlay = texture2D(u_overlay, v_texCoord);
+      vec3 rgb = overlay.rgb * overlay.a + base.rgb * (1.0 - overlay.a);
+      gl_FragColor = vec4(rgb, base.a);
+    `,
+    textures: { u_overlay: "/overlay.png" },
+  }))
+  .applyAsync("/base.png");
+```
+
+To continue in a canvas workflow without writing a pixel loop:
+
+```ts
+await glFilters()
+  .addFilter(compositeFilter)
+  .applyToCanvasAsync("/base.png", targetCanvas);
 ```
 
 ## License

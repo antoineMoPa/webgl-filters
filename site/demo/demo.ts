@@ -8,6 +8,11 @@ import {
   blur,
   sharpen,
   convolve,
+  threshold,
+  dilate,
+  erode,
+  alphaUnder,
+  sobel,
   customShader,
   loadImage,
 } from "../../src/index.js";
@@ -21,6 +26,27 @@ if (!gl) {
   document.body.innerHTML = "<h1>WebGL not supported in this browser.</h1>";
   throw new Error("No WebGL");
 }
+
+(window as unknown as {
+  webglFiltersDebugLib: Record<string, unknown>;
+}).webglFiltersDebugLib = {
+  glFilters,
+  applyFilters,
+  brightness,
+  contrast,
+  saturate,
+  invert,
+  blur,
+  sharpen,
+  convolve,
+  threshold,
+  dilate,
+  erode,
+  alphaUnder,
+  sobel,
+  customShader,
+  loadImage,
+};
 
 // ─── Source image ────────────────────────────────────────────────────────
 let sourceImage: FilterImageData;
@@ -279,6 +305,147 @@ function renderPipeline() {
   pipelineTiming.textContent = `${ms.toFixed(2)} ms (${filters.length} filter${filters.length !== 1 ? "s" : ""})`;
 }
 
+// ─── Multi-input custom shader UI ────────────────────────────────────────
+const multiMode = document.getElementById("multi-mode") as HTMLSelectElement;
+const multiAmount = document.getElementById("multi-amount") as HTMLInputElement;
+const multiAmountValue = document.getElementById("multi-amount-value")!;
+const multiPrimaryCanvas = document.getElementById("multi-primary-canvas") as HTMLCanvasElement;
+const multiExtraCanvas = document.getElementById("multi-extra-canvas") as HTMLCanvasElement;
+const multiOutputCanvas = document.getElementById("multi-output-canvas") as HTMLCanvasElement;
+const multiExtraLabel = document.getElementById("multi-extra-label")!;
+const multiTiming = document.getElementById("multi-timing")!;
+let multiRenderId = 0;
+
+document.getElementById("multi-debug-btn")!.addEventListener("click", () => {
+  drawToCanvas(multiPrimaryCanvas, sourceImage);
+  drawMultiExtraTexture(multiExtraCanvas);
+  void canvasToObjectURL(multiExtraCanvas).then(url => {
+    openDebug([createMultiInputFilter(url)]);
+  });
+});
+multiMode.addEventListener("change", () => { void renderMultiInput(); });
+multiAmount.addEventListener("input", () => {
+  multiAmountValue.textContent = Number(multiAmount.value).toFixed(2);
+  void renderMultiInput();
+});
+
+function createMultiInputFilter(extraTexture: HTMLCanvasElement | string = multiExtraCanvas): Filter {
+  const amount = Number(multiAmount.value);
+
+  if (multiMode.value === "imageThroughMatte") {
+    return customShader({
+      source: `
+        vec4 image = texture2D(u_texture, v_texCoord);
+        vec4 matte = texture2D(u_matte, v_texCoord);
+        float alpha = dot(matte.rgb, vec3(0.299, 0.587, 0.114)) * u_amount;
+        gl_FragColor = vec4(image.rgb, image.a * alpha);
+      `,
+      uniforms: { u_amount: amount },
+      textures: { u_matte: extraTexture },
+    });
+  }
+
+  if (multiMode.value === "lightShadowBlend") {
+    return customShader({
+      source: `
+        vec4 base = texture2D(u_texture, v_texCoord);
+        vec4 overlay = texture2D(u_overlay, v_texCoord);
+        vec3 screen = 1.0 - (1.0 - overlay.rgb * u_amount) * (1.0 - base.rgb);
+        vec3 blended = screen * overlay.rgb;
+        vec3 rgb = blended * overlay.a + base.rgb * (1.0 - overlay.a);
+        gl_FragColor = vec4(rgb, base.a);
+      `,
+      uniforms: { u_amount: amount },
+      textures: { u_overlay: extraTexture },
+    });
+  }
+
+  return customShader({
+    source: `
+      vec4 base = texture2D(u_texture, v_texCoord);
+      vec4 overlay = texture2D(u_overlay, v_texCoord);
+      float overlayAlpha = overlay.a * u_amount;
+      vec3 rgb = overlay.rgb * overlayAlpha + base.rgb * (1.0 - overlayAlpha);
+      float alpha = overlayAlpha + base.a * (1.0 - overlayAlpha);
+      gl_FragColor = vec4(rgb, alpha);
+    `,
+    uniforms: { u_amount: amount },
+    textures: { u_overlay: extraTexture },
+  });
+}
+
+function drawMultiExtraTexture(canvas: HTMLCanvasElement) {
+  canvas.width = sourceWidth;
+  canvas.height = sourceHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (multiMode.value === "imageThroughMatte") {
+    multiExtraLabel.textContent = "Matte canvas texture";
+    const grad = ctx.createRadialGradient(
+      sourceWidth * 0.48,
+      sourceHeight * 0.48,
+      sourceHeight * 0.08,
+      sourceWidth * 0.5,
+      sourceHeight * 0.5,
+      sourceHeight * 0.52,
+    );
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.62, "#d0d0d0");
+    grad.addColorStop(1, "#000000");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, sourceWidth, sourceHeight);
+    return;
+  }
+
+  multiExtraLabel.textContent = "Overlay canvas texture";
+  const overlay = ctx.createLinearGradient(0, 0, sourceWidth, sourceHeight);
+  overlay.addColorStop(0, "rgba(255,255,255,0.9)");
+  overlay.addColorStop(0.45, "rgba(88,166,255,0.55)");
+  overlay.addColorStop(1, "rgba(248,81,73,0.8)");
+  ctx.fillStyle = overlay;
+  ctx.fillRect(0, 0, sourceWidth, sourceHeight);
+
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.ellipse(sourceWidth * 0.58, sourceHeight * 0.5, sourceWidth * 0.34, sourceHeight * 0.26, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+}
+
+function canvasToObjectURL(canvas: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error("Failed to create texture blob"));
+        return;
+      }
+      resolve(URL.createObjectURL(blob));
+    }, "image/png");
+  });
+}
+
+async function renderMultiInput() {
+  const renderId = ++multiRenderId;
+  drawToCanvas(multiPrimaryCanvas, sourceImage);
+  drawMultiExtraTexture(multiExtraCanvas);
+
+  const chain = glFilters(gl).addFilter(createMultiInputFilter());
+  const t0 = performance.now();
+
+  try {
+    await chain.applyToCanvasAsync(multiPrimaryCanvas, multiOutputCanvas);
+    if (renderId !== multiRenderId) return;
+    multiTiming.textContent = `${(performance.now() - t0).toFixed(2)} ms`;
+    multiTiming.style.color = "#3fb950";
+  } catch (e) {
+    if (renderId !== multiRenderId) return;
+    multiTiming.textContent = `Error: ${(e as Error).message}`;
+    multiTiming.style.color = "#f85149";
+  }
+}
+
 // ─── Render ──────────────────────────────────────────────────────────────
 function renderCard(entry: (typeof cards)[0]) {
   try {
@@ -296,6 +463,7 @@ function renderCard(entry: (typeof cards)[0]) {
 function renderAll() {
   for (const entry of cards) renderCard(entry);
   renderPipeline();
+  void renderMultiInput();
 }
 
 // ─── Image loading ───────────────────────────────────────────────────────

@@ -134,18 +134,22 @@ export function applyFilters(
     // Filter-specific uniforms
     for (const [name, value] of Object.entries(filter.uniforms)) {
       const loc = gl.getUniformLocation(program, name);
-      if (loc === null) continue;
       if (typeof value === "number") {
+        if (loc === null) continue;
         gl.uniform1f(loc, value);
       } else if (Array.isArray(value)) {
-        gl.uniform1fv(loc, new Float32Array(value));
+        const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
+        if (arrayLoc === null) continue;
+        gl.uniform1fv(arrayLoc, new Float32Array(value));
       }
     }
+    const extraTextures = bindExtraTextures(gl, program, filter, 1);
 
     // Render to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, targets[writeIndex].framebuffer);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    for (const texture of extraTextures) gl.deleteTexture(texture);
     gl.deleteProgram(program);
     readIndex = writeIndex;
   }
@@ -210,6 +214,41 @@ function uploadSource(gl: WebGLRenderingContext, tex: WebGLTexture, source: Text
   } else {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source as TexImageSource);
   }
+}
+
+function assertLoadedTextureSource(name: string, source: unknown): asserts source is TextureSource {
+  if (typeof source === "string") {
+    throw new Error(
+      `Texture uniform "${name}" is a URL. Use applyAsync() so it can be loaded, or pass a preloaded image source.`,
+    );
+  }
+}
+
+function bindExtraTextures(
+  gl: WebGLRenderingContext,
+  program: WebGLProgram,
+  filter: Filter,
+  startUnit: number,
+): WebGLTexture[] {
+  const textures: WebGLTexture[] = [];
+  if (!filter.textures) return textures;
+
+  let unit = startUnit;
+  for (const [name, source] of Object.entries(filter.textures)) {
+    assertLoadedTextureSource(name, source);
+    const loc = gl.getUniformLocation(program, name);
+    if (loc === null) continue;
+
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    const texture = createTexture(gl, 1, 1);
+    uploadSource(gl, texture, source);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(loc, unit);
+    textures.push(texture);
+    unit++;
+  }
+
+  return textures;
 }
 
 const PASSTHROUGH_FRAGMENT = `
@@ -346,21 +385,26 @@ export class GLRenderer {
       gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / width, 1 / height);
 
       // Filter-specific uniforms
+      let extraTextures: WebGLTexture[] = [];
       if (hasFilters) {
         for (const [name, value] of Object.entries(filters[i].uniforms)) {
           const loc = gl.getUniformLocation(program, name);
-          if (loc === null) continue;
           if (typeof value === "number") {
+            if (loc === null) continue;
             gl.uniform1f(loc, value);
           } else if (Array.isArray(value)) {
-            gl.uniform1fv(loc, new Float32Array(value));
+            const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
+            if (arrayLoc === null) continue;
+            gl.uniform1fv(arrayLoc, new Float32Array(value));
           }
         }
+        extraTextures = bindExtraTextures(gl, program, filters[i], 1);
       }
 
       // All filter passes render to framebuffers
       gl.bindFramebuffer(gl.FRAMEBUFFER, targets[writeIndex].framebuffer);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      for (const texture of extraTextures) gl.deleteTexture(texture);
       readIndex = writeIndex;
     }
 

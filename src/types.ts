@@ -20,6 +20,7 @@ export interface ImageData {
 export interface Filter {
   fragmentSource: string;
   uniforms: Record<string, number | number[]>;
+  textures?: Record<string, TextureUniformValue>;
   /** Debug metadata: records the factory call that created this filter. */
   _debugLabel?: string;
 }
@@ -50,6 +51,10 @@ export type ImageSource =
   | HTMLImageElement
   | HTMLCanvasElement
   | ImageBitmap;
+
+export type TextureUniformValue =
+  | string
+  | ImageSource;
 
 export interface ConvolutionOptions {
   kernel: Kernel5x5;

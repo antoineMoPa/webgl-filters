@@ -1,4 +1,4 @@
-import type { Filter, ImageData, ImageSource } from "./types.js";
+import type { Filter, ImageData, ImageSource, TextureUniformValue } from "./types.js";
 import { applyFilters, GLRenderer, getSourceDimensions } from "./renderer.js";
 import { generateDebugHTML, imageSourceToDataURI } from "./debug.js";
 
@@ -50,13 +50,37 @@ export class CompiledFilter {
    * Load an image from a URL and apply filters.
    * Returns a Promise that resolves to the filtered `ImageData`.
    */
-  async applyAsync(source: string): Promise<ImageData> {
+  async applyAsync(source: string | ImageSource): Promise<ImageData> {
     if (this.disposed) throw new Error("CompiledFilter has been disposed");
-    const img = await loadImage(source);
-    return this.applyImage(img);
+    const img = typeof source === "string" ? await loadImage(source) : source;
+    const filters = await resolveFilterTextures(this.filters);
+    return this.applyImage(img, filters);
   }
 
-  private applyImage(source: ImageSource): ImageData {
+  /** Apply filters and draw the result into an existing canvas. */
+  applyToCanvas(source: ImageSource, targetCanvas: HTMLCanvasElement): HTMLCanvasElement {
+    drawImageDataToCanvas(this.applyImage(source), targetCanvas);
+    return targetCanvas;
+  }
+
+  /** Load URL inputs if needed, apply filters, and draw into an existing canvas. */
+  async applyToCanvasAsync(source: string | ImageSource, targetCanvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+    drawImageDataToCanvas(await this.applyAsync(source), targetCanvas);
+    return targetCanvas;
+  }
+
+  private applyImage(source: ImageSource, filters: Filter[] = this.filters): ImageData {
+    if (filters !== this.filters) {
+      const gl = this.defaultGl ?? createOffscreenGL();
+      const renderer = new GLRenderer(gl, filters);
+      try {
+        renderer.render(source, false);
+        return renderer.readPixels();
+      } finally {
+        renderer.dispose();
+      }
+    }
+
     if (!this.renderer) {
       const gl = this.defaultGl ?? createOffscreenGL();
       this.renderer = new GLRenderer(gl, this.filters);
@@ -160,9 +184,23 @@ export class GLFilters {
    * Load an image from a URL and apply filters.
    * Returns a Promise that resolves to the filtered `ImageData`.
    */
-  async applyAsync(source: string): Promise<ImageData> {
-    const img = await loadImage(source);
-    return this.apply(img);
+  async applyAsync(source: string | ImageSource): Promise<ImageData> {
+    const img = typeof source === "string" ? await loadImage(source) : source;
+    const filters = await resolveFilterTextures(this.filters);
+    const gl = this.gl ?? createOffscreenGL();
+    return applyFilters(gl, img, filters);
+  }
+
+  /** Apply filters and draw the result into an existing canvas. */
+  applyToCanvas(input: ImageSource, targetCanvas: HTMLCanvasElement): HTMLCanvasElement {
+    drawImageDataToCanvas(this.apply(input), targetCanvas);
+    return targetCanvas;
+  }
+
+  /** Load URL inputs if needed, apply filters, and draw the result into an existing canvas. */
+  async applyToCanvasAsync(input: string | ImageSource, targetCanvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+    drawImageDataToCanvas(await this.applyAsync(input), targetCanvas);
+    return targetCanvas;
   }
 
   /**
@@ -230,4 +268,46 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
     img.src = url;
   });
+}
+
+async function resolveFilterTextures(filters: Filter[]): Promise<Filter[]> {
+  let changed = false;
+  const resolved = await Promise.all(filters.map(async filter => {
+    if (!filter.textures) return filter;
+
+    const entries = await Promise.all(Object.entries(filter.textures).map(async ([name, value]) => {
+      if (typeof value !== "string") return [name, value] as const;
+      changed = true;
+      return [name, await loadImage(value)] as const;
+    }));
+
+    if (!changed) return filter;
+    return {
+      ...filter,
+      textures: Object.fromEntries(entries) as Record<string, TextureUniformValue>,
+    };
+  }));
+
+  return changed ? resolved : filters;
+}
+
+function drawImageDataToCanvas(image: ImageData, targetCanvas: HTMLCanvasElement): void {
+  targetCanvas.width = image.width;
+  targetCanvas.height = image.height;
+
+  const ctx = targetCanvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to create 2d context");
+
+  const browserImageData = typeof globalThis.ImageData === "function"
+    ? new globalThis.ImageData(new Uint8ClampedArray(image.data), image.width, image.height)
+    : ctx.createImageData(image.width, image.height);
+
+  if (!("data" in browserImageData)) {
+    throw new Error("Failed to create ImageData for canvas output");
+  }
+
+  if (browserImageData.data !== image.data) {
+    browserImageData.data.set(image.data);
+  }
+  ctx.putImageData(browserImageData, 0, 0);
 }

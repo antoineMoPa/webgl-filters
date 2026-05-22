@@ -32,6 +32,19 @@
     .pipeline-checks input { accent-color: #58a6ff; margin-right: 0.25rem; }
     .pipeline-result { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
     .pipeline-result canvas { max-width: 320px; border-radius: 4px; background: #000; }
+    .multi-section { margin-top: 1.5rem; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
+    .multi-section .card-header { margin-bottom: 0.75rem; }
+    .multi-controls { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.75rem; }
+    .multi-controls label { font-size: 0.85rem; color: #8b949e; }
+    .multi-controls select { padding: 0.45rem 0.6rem; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; }
+    .multi-controls input[type=range] { width: 180px; accent-color: #58a6ff; }
+    .multi-stage { display: grid; grid-template-columns: repeat(3, minmax(0, 320px)); gap: 1rem; align-items: start; }
+    .multi-stage figure { margin: 0; }
+    .multi-stage figcaption { font-size: 0.75rem; color: #8b949e; margin: 0 0 0.35rem; }
+    .multi-stage canvas { width: 100%; height: auto; border-radius: 4px; background: #000; }
+    @media (max-width: 900px) {
+      .multi-stage { grid-template-columns: 1fr; }
+    }
     #drop-zone { border: 2px dashed #30363d; border-radius: 8px; padding: 1rem; text-align: center; color: #8b949e; margin-bottom: 1.5rem; cursor: pointer; transition: border-color 0.15s; }
     #drop-zone:hover, #drop-zone.dragover { border-color: #58a6ff; }
     #drop-zone input { display: none; }
@@ -68,6 +81,39 @@
         <canvas id="pipeline-canvas" width="320" height="240"></canvas>
         <div class="timing" id="pipeline-timing"></div>
       </div>
+    </div>
+  </div>
+
+  <div class="multi-section">
+    <div class="card-header">
+      <h2>Multi-input custom shader</h2>
+      <button class="debug-btn" id="multi-debug-btn">Debug</button>
+    </div>
+    <div class="multi-controls">
+      <label for="multi-mode">Shader</label>
+      <select id="multi-mode">
+        <option value="alphaComposite">Alpha composite</option>
+        <option value="imageThroughMatte">Image through matte</option>
+        <option value="lightShadowBlend">Light/shadow blend</option>
+      </select>
+      <label for="multi-amount">Amount</label>
+      <input type="range" id="multi-amount" min="0" max="1" step="0.01" value="0.65">
+      <span class="value" id="multi-amount-value">0.65</span>
+    </div>
+    <div class="multi-stage">
+      <figure>
+        <figcaption>Primary canvas input</figcaption>
+        <canvas id="multi-primary-canvas" width="320" height="240"></canvas>
+      </figure>
+      <figure>
+        <figcaption id="multi-extra-label">Extra texture canvas</figcaption>
+        <canvas id="multi-extra-canvas" width="320" height="240"></canvas>
+      </figure>
+      <figure>
+        <figcaption>Output canvas</figcaption>
+        <canvas id="multi-output-canvas" width="320" height="240"></canvas>
+        <div class="timing" id="multi-timing"></div>
+      </figure>
     </div>
   </div>
 
