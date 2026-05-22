@@ -7,8 +7,7 @@ import type { ConvolutionOptions, Filter } from "../types.js";
  */
 export function convolve(options: ConvolutionOptions): Filter {
   const { kernel, bias = 0 } = options;
-  const kernelSum = kernel.reduce((a, b) => a + b, 0);
-  const divisor = options.divisor ?? (kernelSum === 0 ? 1 : kernelSum);
+  const divisor = options.divisor ?? 1;
 
   // Generate 25 sample+accumulate lines
   const lines: string[] = [];

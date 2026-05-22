@@ -58,7 +58,7 @@ export type TextureUniformValue =
 
 export interface ConvolutionOptions {
   kernel: Kernel5x5;
-  /** Divisor applied after summing. Defaults to kernel sum (or 1 if sum is 0). */
+  /** Divisor applied after summing. Defaults to 1. */
   divisor?: number;
   /** Value added after division (in 0-1 range). Defaults to 0. */
   bias?: number;

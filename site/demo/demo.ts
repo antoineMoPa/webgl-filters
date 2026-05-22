@@ -169,7 +169,9 @@ const filterDefs: FilterDef[] = [
     create() {
       const inputs = document.querySelectorAll<HTMLInputElement>(".kernel-input");
       const kernel = Array.from(inputs).map(i => parseFloat(i.value) || 0) as unknown as Kernel5x5;
-      return convolve({ kernel });
+      const divisor = parseFloat((document.getElementById("ctrl-convolve-divisor") as HTMLInputElement)?.value ?? "1");
+      const bias = parseFloat((document.getElementById("ctrl-convolve-bias") as HTMLInputElement)?.value ?? "0");
+      return convolve({ kernel, divisor, bias });
     },
     controls(el, onChange) {
       const emboss = [
@@ -190,6 +192,15 @@ const filterDefs: FilterDef[] = [
         grid.appendChild(inp);
       });
       el.appendChild(grid);
+      const params = document.createElement("div");
+      params.className = "convolve-params";
+      params.innerHTML = `
+        <label>Divisor</label><input type="number" id="ctrl-convolve-divisor" step="0.1" value="1">
+        <label>Bias</label><input type="number" id="ctrl-convolve-bias" step="0.01" value="0">`;
+      for (const input of params.querySelectorAll<HTMLInputElement>("input")) {
+        input.addEventListener("input", onChange);
+      }
+      el.appendChild(params);
     },
   },
   {

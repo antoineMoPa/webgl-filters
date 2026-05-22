@@ -125,7 +125,7 @@ const gl = createGL(width, height, { preserveDrawingBuffer: true });
 | `dilate({ radius? })` | `radius`: px (default 1) | Morphological dilation — expands bright regions |
 | `erode({ radius? })` | `radius`: px (default 1) | Morphological erosion — shrinks bright regions |
 | `sharpen()` | — | 5×5 sharpening |
-| `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array | Custom 5×5 convolution |
+| `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array, `divisor`: float (default 1), `bias`: float (default 0) | Custom 5×5 convolution |
 | `customShader({ source, uniforms?, textures? })` | GLSL source + uniforms + sampler2D inputs | User-defined shader |
 
 ## Custom Shaders

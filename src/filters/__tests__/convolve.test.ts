@@ -23,10 +23,42 @@ describe("convolve", () => {
     expect(b).toBeCloseTo(200, -1);
   });
 
-  it("uniform kernel on solid image returns same color", () => {
+  it("uniform kernel clips bright values by default", () => {
     const allOnes: Kernel5x5 = Array(25).fill(1) as Kernel5x5;
     const img = solidImage(8, 8, 80, 80, 80);
     const result = applyFilters(gl, img, [convolve({ kernel: allOnes })]);
+    const [r, g, b] = pixel(result, 4, 4);
+    expect(r).toBe(255);
+    expect(g).toBe(255);
+    expect(b).toBe(255);
+  });
+
+  it("accumulates positive kernels without implicit normalization", () => {
+    const vertical: Kernel5x5 = [
+      0, 0, 0, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 0, 0, 0,
+    ];
+    const img = solidImage(8, 8, 80, 80, 80);
+    const result = applyFilters(gl, img, [convolve({ kernel: vertical })]);
+    const [r, g, b] = pixel(result, 4, 4);
+    expect(r).toBeCloseTo(240, -1);
+    expect(g).toBeCloseTo(240, -1);
+    expect(b).toBeCloseTo(240, -1);
+  });
+
+  it("uses an explicit divisor for normalized kernels", () => {
+    const vertical: Kernel5x5 = [
+      0, 0, 0, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 1, 0, 0,
+      0, 0, 0, 0, 0,
+    ];
+    const img = solidImage(8, 8, 80, 80, 80);
+    const result = applyFilters(gl, img, [convolve({ kernel: vertical, divisor: 3 })]);
     const [r, g, b] = pixel(result, 4, 4);
     expect(r).toBeCloseTo(80, -1);
     expect(g).toBeCloseTo(80, -1);
