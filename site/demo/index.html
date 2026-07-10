@@ -58,7 +58,7 @@
 </head>
 <body>
   <h1>glFilters demo</h1>
-  <p class="subtitle">Each filter runs as a WebGL fragment shader. Timings include GPU render + readPixels.</p>
+  <p class="subtitle">Each filter runs as a WebGL fragment shader. The pipeline and multi-input demos stay GPU-resident until presentation.</p>
 
   <div id="drop-zone">
     <p>Drop an image here or click to upload</p>
@@ -74,7 +74,7 @@
 
   <div class="pipeline-section">
     <div class="card-header">
-      <h2>Pipeline (chained filters)</h2>
+      <h2>GPU-resident pipeline</h2>
       <button class="debug-btn" id="pipeline-debug-btn">Debug</button>
     </div>
     <div class="pipeline-checks" id="pipeline-checks"></div>
@@ -88,7 +88,7 @@
 
   <div class="multi-section">
     <div class="card-header">
-      <h2>Multi-input custom shader</h2>
+      <h2>GPU texture-handle custom shader</h2>
       <button class="debug-btn" id="multi-debug-btn">Debug</button>
     </div>
     <div class="multi-controls">
@@ -108,7 +108,7 @@
         <canvas id="multi-primary-canvas" width="320" height="240"></canvas>
       </figure>
       <figure>
-        <figcaption id="multi-extra-label">Extra texture canvas</figcaption>
+        <figcaption id="multi-extra-label">Extra texture uploaded as a handle</figcaption>
         <canvas id="multi-extra-canvas" width="320" height="240"></canvas>
       </figure>
       <figure>

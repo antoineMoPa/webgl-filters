@@ -42,6 +42,13 @@ export type TextureSource =
   | HTMLCanvasElement
   | ImageBitmap;
 
+/** A GPU-resident texture created by `FilterContext`. */
+export interface TextureHandle {
+  readonly width: number;
+  readonly height: number;
+  readonly __webglFiltersTextureHandle: true;
+}
+
 /**
  * Any image source accepted by the one-shot `apply()` methods.
  * This is `TextureSource` without `HTMLVideoElement` — use `.compile()` for video.
@@ -54,7 +61,8 @@ export type ImageSource =
 
 export type TextureUniformValue =
   | string
-  | ImageSource;
+  | ImageSource
+  | TextureHandle;
 
 export interface ConvolutionOptions {
   kernel: Kernel5x5;

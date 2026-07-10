@@ -1,5 +1,5 @@
 import {
-  glFilters,
+  createFilterContext,
   brightness,
   contrast,
   saturate,
@@ -9,7 +9,7 @@ import {
   convolve,
   customShader,
 } from "../../src/index.js";
-import type { CompiledFilter } from "../../src/index.js";
+import type { FilterContext } from "../../src/index.js";
 import type { Filter, Kernel5x5 } from "../../src/types.js";
 
 // ─── Elements ────────────────────────────────────────────────────────────
@@ -147,11 +147,12 @@ function updateSliderVisibility() {
 }
 
 // ─── State ───────────────────────────────────────────────────────────────
-let currentFilter: CompiledFilter | null = null;
+let currentContext: FilterContext | null = null;
 let outputCanvas: HTMLCanvasElement | null = null;
 let mediaStream: MediaStream | null = null;
 let frameCount = 0;
 let fpsInterval: number | null = null;
+let animationFrameId: number | null = null;
 
 function getSelectedFilters(): Filter[] {
   const filters: Filter[] = [];
@@ -165,9 +166,13 @@ function getSelectedFilters(): Filter[] {
 
 function applyFiltersToVideo() {
   // Clean up previous
-  if (currentFilter) {
-    currentFilter.dispose();
-    currentFilter = null;
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  if (currentContext) {
+    currentContext.dispose();
+    currentContext = null;
   }
   if (outputCanvas) {
     outputCanvas.remove();
@@ -175,11 +180,10 @@ function applyFiltersToVideo() {
   }
 
   const filters = getSelectedFilters();
-  const pipeline = glFilters();
-  for (const f of filters) pipeline.addFilter(f);
-  currentFilter = pipeline.compile();
-
-  outputCanvas = currentFilter.apply(video);
+  outputCanvas = document.createElement("canvas");
+  const gl = outputCanvas.getContext("webgl", { preserveDrawingBuffer: false });
+  if (!gl) throw new Error("Failed to create WebGL context for video");
+  currentContext = createFilterContext(gl);
   outputCanvas.style.width = "100%";
   outputCanvas.style.maxWidth = "640px";
   outputCanvas.style.borderRadius = "6px";
@@ -189,13 +193,30 @@ function applyFiltersToVideo() {
 
   statsEl.textContent = `${filters.length} filter${filters.length !== 1 ? "s" : ""} active`;
 
+  const renderFrame = () => {
+    if (!currentContext || !outputCanvas || video.paused || video.ended) return;
+    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      let output = null;
+      try {
+        output = currentContext.run(filters, video);
+        currentContext.present(output, outputCanvas);
+        frameCount++;
+      } catch (err) {
+        statsEl.textContent = `Render error: ${(err as Error).message}`;
+        return;
+      } finally {
+        if (output) currentContext.release(output);
+      }
+    }
+    animationFrameId = requestAnimationFrame(renderFrame);
+  };
+  animationFrameId = requestAnimationFrame(renderFrame);
+
   // FPS counter
   frameCount = 0;
   if (fpsInterval) clearInterval(fpsInterval);
-  const countFrames = () => { frameCount++; requestAnimationFrame(countFrames); };
-  requestAnimationFrame(countFrames);
   fpsInterval = window.setInterval(() => {
-    statsEl.textContent = `${filters.length} filter${filters.length !== 1 ? "s" : ""} active — ${frameCount} fps`;
+    statsEl.textContent = `${filters.length} filter${filters.length !== 1 ? "s" : ""} active — ${frameCount} fps, GPU-resident`;
     frameCount = 0;
   }, 1000);
 }
@@ -229,9 +250,13 @@ function loadVideoFile(file: File) {
 }
 
 function stopVideo() {
-  if (currentFilter) {
-    currentFilter.dispose();
-    currentFilter = null;
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  if (currentContext) {
+    currentContext.dispose();
+    currentContext = null;
   }
   if (outputCanvas) {
     outputCanvas.remove();

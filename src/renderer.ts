@@ -1,4 +1,4 @@
-import type { Filter, ImageData, TextureSource } from "./types.js";
+import type { Filter, ImageData, TextureHandle, TextureSource } from "./types.js";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -30,7 +30,7 @@ function compileShader(gl: WebGLRenderingContext, type: number, source: string):
   return shader;
 }
 
-function createProgram(gl: WebGLRenderingContext, fragmentSource: string): WebGLProgram {
+export function createProgram(gl: WebGLRenderingContext, fragmentSource: string): WebGLProgram {
   const vs = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
   const fs = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_HEADER + fragmentSource);
   const program = gl.createProgram();
@@ -48,14 +48,21 @@ function createProgram(gl: WebGLRenderingContext, fragmentSource: string): WebGL
   return program;
 }
 
-function createTexture(gl: WebGLRenderingContext, width: number, height: number, data?: Uint8ClampedArray): WebGLTexture {
+export function createTexture(
+  gl: WebGLRenderingContext,
+  width: number,
+  height: number,
+  data?: Uint8ClampedArray,
+  filter: "linear" | "nearest" = "nearest",
+): WebGLTexture {
   const tex = gl.createTexture();
   if (!tex) throw new Error("Failed to create texture");
+  const glFilter = filter === "linear" ? gl.LINEAR : gl.NEAREST;
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, glFilter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, glFilter);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data ?? null);
   return tex;
 }
@@ -65,7 +72,7 @@ interface FramebufferTarget {
   texture: WebGLTexture;
 }
 
-function createFramebufferTarget(gl: WebGLRenderingContext, width: number, height: number): FramebufferTarget {
+export function createFramebufferTarget(gl: WebGLRenderingContext, width: number, height: number): FramebufferTarget {
   const texture = createTexture(gl, width, height);
   const framebuffer = gl.createFramebuffer();
   if (!framebuffer) throw new Error("Failed to create framebuffer");
@@ -207,7 +214,7 @@ export function getSourceDimensions(source: TextureSource): [number, number] {
   return [source.width, source.height];
 }
 
-function uploadSource(gl: WebGLRenderingContext, tex: WebGLTexture, source: TextureSource): void {
+export function uploadSource(gl: WebGLRenderingContext, tex: WebGLTexture, source: TextureSource): void {
   gl.bindTexture(gl.TEXTURE_2D, tex);
   if (isImageData(source)) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, source.width, source.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, source.data);
@@ -216,7 +223,7 @@ function uploadSource(gl: WebGLRenderingContext, tex: WebGLTexture, source: Text
   }
 }
 
-function assertLoadedTextureSource(name: string, source: unknown): asserts source is TextureSource {
+function assertLoadedTextureSource(name: string, source: unknown): asserts source is TextureSource | TextureHandle {
   if (typeof source === "string") {
     throw new Error(
       `Texture uniform "${name}" is a URL. Use applyAsync() so it can be loaded, or pass a preloaded image source.`,
@@ -224,7 +231,19 @@ function assertLoadedTextureSource(name: string, source: unknown): asserts sourc
   }
 }
 
-function bindExtraTextures(
+export function isTextureHandle(value: unknown): value is TextureHandle {
+  return !!value && typeof value === "object" && "__webglFiltersTextureHandle" in value;
+}
+
+function getInternalHandle(handle: TextureHandle): InternalTextureHandle {
+  if (!(handle instanceof InternalTextureHandle)) {
+    throw new Error("Invalid TextureHandle");
+  }
+  if (handle.released) throw new Error("TextureHandle has been released");
+  return handle;
+}
+
+export function bindExtraTextures(
   gl: WebGLRenderingContext,
   program: WebGLProgram,
   filter: Filter,
@@ -240,6 +259,15 @@ function bindExtraTextures(
     if (loc === null) continue;
 
     gl.activeTexture(gl.TEXTURE0 + unit);
+    if (isTextureHandle(source)) {
+      const handle = getInternalHandle(source);
+      if (handle.gl !== gl) throw new Error(`Texture uniform "${name}" belongs to a different FilterContext`);
+      gl.bindTexture(gl.TEXTURE_2D, handle.texture);
+      gl.uniform1i(loc, unit);
+      unit++;
+      continue;
+    }
+
     const texture = createTexture(gl, 1, 1);
     uploadSource(gl, texture, source);
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -262,6 +290,197 @@ void main() {
   gl_FragColor = texture2D(u_texture, vec2(v_texCoord.x, 1.0 - v_texCoord.y));
 }
 `;
+
+class InternalTextureHandle implements TextureHandle {
+  readonly __webglFiltersTextureHandle = true;
+  released = false;
+
+  constructor(
+    readonly gl: WebGLRenderingContext,
+    readonly texture: WebGLTexture,
+    readonly framebuffer: WebGLFramebuffer,
+    readonly width: number,
+    readonly height: number,
+  ) {}
+}
+
+function createHandleTarget(
+  gl: WebGLRenderingContext,
+  width: number,
+  height: number,
+  filter: "linear" | "nearest" = "nearest",
+): InternalTextureHandle {
+  const texture = createTexture(gl, width, height, undefined, filter);
+  const framebuffer = gl.createFramebuffer();
+  if (!framebuffer) throw new Error("Failed to create framebuffer");
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return new InternalTextureHandle(gl, texture, framebuffer, width, height);
+}
+
+export class FilterContext {
+  private programs = new Map<string, WebGLProgram>();
+  private quadBuffer: WebGLBuffer;
+  private handles = new Set<InternalTextureHandle>();
+  private disposed = false;
+
+  constructor(private gl: WebGLRenderingContext) {
+    const buf = gl.createBuffer();
+    if (!buf) throw new Error("Failed to create buffer");
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    this.quadBuffer = buf;
+  }
+
+  upload(source: TextureSource, options: { filter?: "linear" | "nearest" } = {}): TextureHandle {
+    this.assertAlive();
+    const [width, height] = getSourceDimensions(source);
+    const handle = createHandleTarget(this.gl, width, height, options.filter ?? "nearest");
+    uploadSource(this.gl, handle.texture, source);
+    this.handles.add(handle);
+    return handle;
+  }
+
+  run(filters: Filter[], input: TextureHandle | TextureSource): TextureHandle {
+    this.assertAlive();
+    const inputIsHandle = isTextureHandle(input);
+    const sourceHandle = inputIsHandle ? this.assertHandle(input) : this.assertHandle(this.upload(input));
+    const ownsSource = !inputIsHandle;
+
+    if (filters.length === 0) return sourceHandle;
+
+    let current = sourceHandle;
+    const temporaries: InternalTextureHandle[] = [];
+
+    for (let i = 0; i < filters.length; i++) {
+      const output = createHandleTarget(this.gl, current.width, current.height);
+      this.handles.add(output);
+      this.drawPass(this.getProgram(filters[i].fragmentSource), filters[i], current.texture, output.framebuffer, current.width, current.height);
+
+      if (current !== sourceHandle) temporaries.push(current);
+      current = output;
+    }
+
+    for (const handle of temporaries) this.release(handle);
+    if (ownsSource) this.release(sourceHandle);
+    return current;
+  }
+
+  present(handle: TextureHandle, canvas: HTMLCanvasElement): void {
+    this.assertAlive();
+    const texture = this.assertHandle(handle);
+    canvas.width = texture.width;
+    canvas.height = texture.height;
+    const glCanvas = this.gl.canvas as HTMLCanvasElement | OffscreenCanvas | undefined;
+    if (glCanvas && "width" in glCanvas) {
+      glCanvas.width = texture.width;
+      glCanvas.height = texture.height;
+    }
+    this.gl.viewport(0, 0, texture.width, texture.height);
+    this.drawPass(this.getProgram(FLIP_Y_FRAGMENT), null, texture.texture, null, texture.width, texture.height);
+    if (glCanvas && glCanvas !== canvas) {
+      const ctx2d = canvas.getContext("2d");
+      if (!ctx2d) throw new Error("Failed to create 2d context for presentation");
+      ctx2d.drawImage(glCanvas as CanvasImageSource, 0, 0);
+    }
+  }
+
+  readPixels(handle: TextureHandle): ImageData {
+    this.assertAlive();
+    const texture = this.assertHandle(handle);
+    const rawOutput = new Uint8Array(texture.width * texture.height * 4);
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, texture.framebuffer);
+    this.gl.readPixels(0, 0, texture.width, texture.height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, rawOutput);
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    return { data: new Uint8ClampedArray(rawOutput.buffer), width: texture.width, height: texture.height };
+  }
+
+  release(handle: TextureHandle): void {
+    const texture = this.assertHandle(handle);
+    texture.released = true;
+    this.handles.delete(texture);
+    this.gl.deleteTexture(texture.texture);
+    this.gl.deleteFramebuffer(texture.framebuffer);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    for (const handle of [...this.handles]) {
+      handle.released = true;
+      this.gl.deleteTexture(handle.texture);
+      this.gl.deleteFramebuffer(handle.framebuffer);
+    }
+    this.handles.clear();
+    for (const program of this.programs.values()) this.gl.deleteProgram(program);
+    this.programs.clear();
+    this.gl.deleteBuffer(this.quadBuffer);
+  }
+
+  private drawPass(
+    program: WebGLProgram,
+    filter: Filter | null,
+    inputTexture: WebGLTexture,
+    framebuffer: WebGLFramebuffer | null,
+    width: number,
+    height: number,
+  ): void {
+    const gl = this.gl;
+    gl.useProgram(program);
+    gl.viewport(0, 0, width, height);
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, inputTexture);
+    gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
+    gl.uniform2f(gl.getUniformLocation(program, "u_resolution"), width, height);
+    gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / width, 1 / height);
+
+    let extraTextures: WebGLTexture[] = [];
+    if (filter) {
+      for (const [name, value] of Object.entries(filter.uniforms)) {
+        const loc = gl.getUniformLocation(program, name);
+        if (typeof value === "number") {
+          if (loc === null) continue;
+          gl.uniform1f(loc, value);
+        } else if (Array.isArray(value)) {
+          const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
+          if (arrayLoc === null) continue;
+          gl.uniform1fv(arrayLoc, new Float32Array(value));
+        }
+      }
+      extraTextures = bindExtraTextures(gl, program, filter, 1);
+    }
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    for (const texture of extraTextures) gl.deleteTexture(texture);
+  }
+
+  private getProgram(fragmentSource: string): WebGLProgram {
+    const existing = this.programs.get(fragmentSource);
+    if (existing) return existing;
+    const program = createProgram(this.gl, fragmentSource);
+    this.programs.set(fragmentSource, program);
+    return program;
+  }
+
+  private assertHandle(handle: TextureHandle): InternalTextureHandle {
+    const texture = getInternalHandle(handle);
+    if (texture.gl !== this.gl || !this.handles.has(texture)) {
+      throw new Error("TextureHandle belongs to a different FilterContext");
+    }
+    return texture;
+  }
+
+  private assertAlive(): void {
+    if (this.disposed) throw new Error("FilterContext has been disposed");
+  }
+}
 
 /**
  * Compiled renderer that caches shader programs for reuse across frames.

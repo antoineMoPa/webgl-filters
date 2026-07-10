@@ -1,5 +1,5 @@
-export { glFilters, GLFilters, CompiledFilter, loadImage } from "./pipeline.js";
-export { applyFilters, GLRenderer } from "./renderer.js";
+export { glFilters, GLFilters, CompiledFilter, createFilterContext, loadImage } from "./pipeline.js";
+export { applyFilters, FilterContext, GLRenderer } from "./renderer.js";
 
 export { brightness } from "./filters/brightness.js";
 export type { BrightnessParams } from "./filters/brightness.js";
@@ -38,6 +38,7 @@ export type {
   Filter,
   ImageData,
   ImageSource,
+  TextureHandle,
   TextureSource,
   TextureUniformValue,
   Kernel5x5,

@@ -1,5 +1,6 @@
 import {
   glFilters,
+  createFilterContext,
   applyFilters,
   brightness,
   contrast,
@@ -26,11 +27,13 @@ if (!gl) {
   document.body.innerHTML = "<h1>WebGL not supported in this browser.</h1>";
   throw new Error("No WebGL");
 }
+const filterContext = createFilterContext(gl);
 
 (window as unknown as {
   webglFiltersDebugLib: Record<string, unknown>;
 }).webglFiltersDebugLib = {
   glFilters,
+  createFilterContext,
   applyFilters,
   brightness,
   contrast,
@@ -309,11 +312,18 @@ function getPipelineFilters(): Filter[] {
 
 function renderPipeline() {
   const filters = getPipelineFilters();
-  const p = glFilters(gl);
-  for (const f of filters) p.addFilter(f);
-  const { result, ms } = timed(() => p.apply(sourceImage));
-  drawToCanvas(pipelineCanvas, result);
-  pipelineTiming.textContent = `${ms.toFixed(2)} ms (${filters.length} filter${filters.length !== 1 ? "s" : ""})`;
+  const t0 = performance.now();
+  const source = filterContext.upload(sourceImage);
+  let output = source;
+  try {
+    output = filterContext.run(filters, source);
+    filterContext.present(output, pipelineCanvas);
+    const ms = performance.now() - t0;
+    pipelineTiming.textContent = `${ms.toFixed(2)} ms (${filters.length} filter${filters.length !== 1 ? "s" : ""}, GPU-resident)`;
+  } finally {
+    if (output !== source) filterContext.release(output);
+    filterContext.release(source);
+  }
 }
 
 // ─── Multi-input custom shader UI ────────────────────────────────────────
@@ -392,7 +402,7 @@ function drawMultiExtraTexture(canvas: HTMLCanvasElement) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (multiMode.value === "imageThroughMatte") {
-    multiExtraLabel.textContent = "Matte canvas texture";
+    multiExtraLabel.textContent = "Matte TextureHandle";
     const grad = ctx.createRadialGradient(
       sourceWidth * 0.48,
       sourceHeight * 0.48,
@@ -409,7 +419,7 @@ function drawMultiExtraTexture(canvas: HTMLCanvasElement) {
     return;
   }
 
-  multiExtraLabel.textContent = "Overlay canvas texture";
+  multiExtraLabel.textContent = "Overlay TextureHandle";
   const overlay = ctx.createLinearGradient(0, 0, sourceWidth, sourceHeight);
   overlay.addColorStop(0, "rgba(255,255,255,0.9)");
   overlay.addColorStop(0.45, "rgba(88,166,255,0.55)");
@@ -442,11 +452,14 @@ async function renderMultiInput() {
   drawToCanvas(multiPrimaryCanvas, sourceImage);
   drawMultiExtraTexture(multiExtraCanvas);
 
-  const chain = glFilters(gl).addFilter(createMultiInputFilter());
   const t0 = performance.now();
+  const source = filterContext.upload(multiPrimaryCanvas);
+  const extra = filterContext.upload(multiExtraCanvas, { filter: "linear" });
+  let output = source;
 
   try {
-    await chain.applyToCanvasAsync(multiPrimaryCanvas, multiOutputCanvas);
+    output = filterContext.run([createMultiInputFilter(extra)], source);
+    filterContext.present(output, multiOutputCanvas);
     if (renderId !== multiRenderId) return;
     multiTiming.textContent = `${(performance.now() - t0).toFixed(2)} ms`;
     multiTiming.style.color = "#3fb950";
@@ -454,6 +467,10 @@ async function renderMultiInput() {
     if (renderId !== multiRenderId) return;
     multiTiming.textContent = `Error: ${(e as Error).message}`;
     multiTiming.style.color = "#f85149";
+  } finally {
+    if (output !== source) filterContext.release(output);
+    filterContext.release(extra);
+    filterContext.release(source);
   }
 }
 

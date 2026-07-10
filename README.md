@@ -111,6 +111,50 @@ import createGL from "gl";
 const gl = createGL(width, height, { preserveDrawingBuffer: true });
 ```
 
+### GPU-resident multi-pass pipelines
+
+Use `createFilterContext()` when chaining filter pipelines without reading pixels
+back to the CPU between passes. Outputs are `TextureHandle`s that can be reused
+as later inputs or custom shader texture uniforms.
+
+```ts
+import { createFilterContext, blur, customShader } from "webgl-filters";
+
+const ctx = createFilterContext(gl);
+
+const source = ctx.upload(imageData);
+const blurred = ctx.run([blur({ radius: 4 })], source);
+
+const composited = ctx.run([
+  customShader({
+    source: `
+      vec4 base = texture2D(u_texture, v_texCoord);
+      vec4 glow = texture2D(u_glow, v_texCoord);
+      gl_FragColor = vec4(base.rgb + glow.rgb * 0.35, base.a);
+    `,
+    textures: { u_glow: blurred },
+  }),
+], source);
+
+ctx.present(composited, canvas);
+
+ctx.release(source);
+ctx.release(blurred);
+ctx.release(composited);
+ctx.dispose();
+```
+
+`FilterContext` methods:
+
+- `ctx.upload(source, { filter?: "linear" | "nearest" })` uploads an image, canvas, bitmap, or video frame to a GPU texture.
+- `ctx.run(filters, input)` runs a filter chain and returns a new `TextureHandle` without `readPixels`.
+- `ctx.present(handle, canvas)` draws a handle to a canvas with the same Y-flip used by the renderer.
+- `ctx.readPixels(handle)` explicitly reads a handle back to `{ data, width, height }` when needed.
+- `ctx.release(handle)` frees a texture handle; `ctx.dispose()` frees all remaining handles and cached programs.
+
+Texture handles are tied to the context that created them. Passing a handle from
+one `FilterContext` into another context throws instead of silently re-uploading.
+
 ## Filters
 
 | Filter | Parameters | Description |
@@ -142,6 +186,8 @@ uniform sampled in the same normalized coordinate space as `u_texture`.
 Texture values can be URLs with `applyAsync()`, or preloaded
 `HTMLImageElement`, `HTMLCanvasElement`, `ImageBitmap`, or `ImageData` values
 with either `apply()` or `applyAsync()`.
+`TextureHandle` values from `createFilterContext()` are also accepted and bind
+directly as GPU textures with no upload.
 
 ```ts
 const sepia = customShader({

@@ -1,5 +1,5 @@
 import type { Filter, ImageData, ImageSource, TextureUniformValue } from "./types.js";
-import { applyFilters, GLRenderer, getSourceDimensions } from "./renderer.js";
+import { applyFilters, FilterContext, GLRenderer, getSourceDimensions } from "./renderer.js";
 import { generateDebugHTML, imageSourceToDataURI } from "./debug.js";
 
 /**
@@ -249,6 +249,20 @@ function createOffscreenGL(): WebGLRenderingContext {
   const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
   if (!gl) throw new Error("Failed to create WebGL context");
   return gl;
+}
+
+/** Create a hidden offscreen WebGL context, preferring WebGL2. */
+function createOffscreenFilterGL(): WebGLRenderingContext {
+  const canvas = document.createElement("canvas");
+  const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true })
+    ?? canvas.getContext("webgl", { preserveDrawingBuffer: true });
+  if (!gl) throw new Error("Failed to create WebGL context");
+  return gl as WebGLRenderingContext;
+}
+
+/** Create a GPU-resident filtering context. */
+export function createFilterContext(gl?: WebGLRenderingContext | null): FilterContext {
+  return new FilterContext(gl ?? createOffscreenFilterGL());
 }
 
 /** Create a new filter chain, optionally bound to a WebGL context. */
