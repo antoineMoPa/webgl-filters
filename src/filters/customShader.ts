@@ -1,4 +1,5 @@
 import type { Filter, TextureUniformValue } from "../types.js";
+import { scalarUniformDeclaration, uniformKeepAliveStatement } from "../uniforms.js";
 
 /**
  * Create a filter from user-provided GLSL.
@@ -32,7 +33,7 @@ export function customShader(options: {
   // Generate uniform declarations for user-provided uniforms
   const uniformDeclarations = Object.entries(uniforms)
     .map(([name, value]) => {
-      if (typeof value === "number") return `uniform float ${name};`;
+      if (typeof value === "number") return scalarUniformDeclaration(name);
       return `uniform float ${name}[${value.length}];`;
     })
     .join("\n");
@@ -43,11 +44,16 @@ export function customShader(options: {
     .filter(Boolean)
     .join("\n");
 
+  // The trailing keep-alive references every declared uniform so none
+  // can be eliminated (see uniformKeepAliveStatement). It requires the
+  // body to fall through to the end of main — custom sources must not
+  // early-return.
   const filter: Filter = {
     fragmentSource: `
 ${declarations}
 void main() {
 ${source}
+${uniformKeepAliveStatement(uniforms)}
 }
 `,
     uniforms,

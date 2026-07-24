@@ -1,4 +1,5 @@
 import type { Filter, ImageData, TextureHandle, TextureSource } from "./types.js";
+import { setFilterUniforms, setVec2Uniform, vec2UniformDeclaration } from "./uniforms.js";
 
 const VERTEX_SHADER = `
 attribute vec2 a_position;
@@ -12,8 +13,8 @@ void main() {
 const FRAGMENT_HEADER = `
 precision mediump float;
 uniform sampler2D u_texture;
-uniform vec2 u_resolution;
-uniform vec2 u_texelSize;
+${vec2UniformDeclaration("u_resolution")}
+${vec2UniformDeclaration("u_texelSize")}
 varying vec2 v_texCoord;
 `;
 
@@ -135,21 +136,11 @@ export function applyFilters(
     gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
 
     // Built-in uniforms
-    gl.uniform2f(gl.getUniformLocation(program, "u_resolution"), width, height);
-    gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / width, 1 / height);
+    setVec2Uniform(gl, program, "u_resolution", width, height);
+    setVec2Uniform(gl, program, "u_texelSize", 1 / width, 1 / height);
 
     // Filter-specific uniforms
-    for (const [name, value] of Object.entries(filter.uniforms)) {
-      const loc = gl.getUniformLocation(program, name);
-      if (typeof value === "number") {
-        if (loc === null) continue;
-        gl.uniform1f(loc, value);
-      } else if (Array.isArray(value)) {
-        const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
-        if (arrayLoc === null) continue;
-        gl.uniform1fv(arrayLoc, new Float32Array(value));
-      }
-    }
+    setFilterUniforms(gl, program, filter.uniforms);
     const extraTextures = bindExtraTextures(gl, program, filter, 1);
 
     // Render to framebuffer
@@ -437,22 +428,12 @@ export class FilterContext {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, inputTexture);
     gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
-    gl.uniform2f(gl.getUniformLocation(program, "u_resolution"), width, height);
-    gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / width, 1 / height);
+    setVec2Uniform(gl, program, "u_resolution", width, height);
+    setVec2Uniform(gl, program, "u_texelSize", 1 / width, 1 / height);
 
     let extraTextures: WebGLTexture[] = [];
     if (filter) {
-      for (const [name, value] of Object.entries(filter.uniforms)) {
-        const loc = gl.getUniformLocation(program, name);
-        if (typeof value === "number") {
-          if (loc === null) continue;
-          gl.uniform1f(loc, value);
-        } else if (Array.isArray(value)) {
-          const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
-          if (arrayLoc === null) continue;
-          gl.uniform1fv(arrayLoc, new Float32Array(value));
-        }
-      }
+      setFilterUniforms(gl, program, filter.uniforms);
       extraTextures = bindExtraTextures(gl, program, filter, 1);
     }
 
@@ -600,23 +581,13 @@ export class GLRenderer {
       gl.uniform1i(gl.getUniformLocation(program, "u_texture"), 0);
 
       // Built-in uniforms
-      gl.uniform2f(gl.getUniformLocation(program, "u_resolution"), width, height);
-      gl.uniform2f(gl.getUniformLocation(program, "u_texelSize"), 1 / width, 1 / height);
+      setVec2Uniform(gl, program, "u_resolution", width, height);
+      setVec2Uniform(gl, program, "u_texelSize", 1 / width, 1 / height);
 
       // Filter-specific uniforms
       let extraTextures: WebGLTexture[] = [];
       if (hasFilters) {
-        for (const [name, value] of Object.entries(filters[i].uniforms)) {
-          const loc = gl.getUniformLocation(program, name);
-          if (typeof value === "number") {
-            if (loc === null) continue;
-            gl.uniform1f(loc, value);
-          } else if (Array.isArray(value)) {
-            const arrayLoc = gl.getUniformLocation(program, `${name}[0]`) ?? loc;
-            if (arrayLoc === null) continue;
-            gl.uniform1fv(arrayLoc, new Float32Array(value));
-          }
-        }
+        setFilterUniforms(gl, program, filters[i].uniforms);
         extraTextures = bindExtraTextures(gl, program, filters[i], 1);
       }
 
