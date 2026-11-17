@@ -170,7 +170,7 @@ one `FilterContext` into another context throws instead of silently re-uploading
 | `erode({ radius? })` | `radius`: px (default 1) | Morphological erosion — shrinks bright regions |
 | `sharpen()` | — | 5×5 sharpening |
 | `convolve({ kernel, divisor?, bias? })` | `kernel`: 25-element array, `divisor`: float (default 1), `bias`: float (default 0) | Custom 5×5 convolution |
-| `customShader({ source, uniforms?, textures? })` | GLSL source + uniforms + sampler2D inputs | User-defined shader |
+| `customShader({ source, uniforms?, textures?, helpers?, precision? })` | GLSL main() body + uniforms + sampler2D inputs, optional helper functions before main() and `"highp"` precision | User-defined shader |
 
 ## Custom Shaders
 
