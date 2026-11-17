@@ -14,6 +14,12 @@ import { scalarUniformDeclaration, uniformKeepAliveStatement } from "../uniforms
  *
  * Write your result to gl_FragColor.
  *
+ * Options beyond the main() body:
+ *   - helpers: GLSL inserted after the uniform declarations and before
+ *     main() — functions, #defines, consts the body can call.
+ *   - precision: "highp" raises float precision for this shader where the
+ *     GPU supports it (falls back to the default mediump otherwise).
+ *
  * Example:
  *   customShader({
  *     source: `
@@ -23,12 +29,16 @@ import { scalarUniformDeclaration, uniformKeepAliveStatement } from "../uniforms
  *     uniforms: {},
  *   })
  */
+export type CustomShaderPrecision = "mediump" | "highp";
+
 export function customShader(options: {
   source: string;
   uniforms?: Record<string, number | number[]>;
   textures?: Record<string, TextureUniformValue>;
+  helpers?: string;
+  precision?: CustomShaderPrecision;
 }): Filter {
-  const { source, uniforms = {}, textures = {} } = options;
+  const { source, uniforms = {}, textures = {}, helpers = "", precision = "mediump" } = options;
 
   // Generate uniform declarations for user-provided uniforms
   const uniformDeclarations = Object.entries(uniforms)
@@ -49,24 +59,39 @@ export function customShader(options: {
   // body to fall through to the end of main — custom sources must not
   // early-return.
   const filter: Filter = {
-    fragmentSource: `
+    fragmentSource: `${formatPrecisionStatement(precision)}
 ${declarations}
+${helpers}
 void main() {
 ${source}
 ${uniformKeepAliveStatement(uniforms)}
 }
 `,
     uniforms,
-    _debugLabel: formatCustomShaderDebugLabel(source, uniforms, textures),
+    _debugLabel: formatCustomShaderDebugLabel(source, uniforms, textures, helpers, precision),
   };
   if (Object.keys(textures).length > 0) filter.textures = textures;
   return filter;
+}
+
+/**
+ * The renderer header already declares mediump; a later precision statement
+ * overrides it. highp is optional in GLSL ES fragment shaders, hence the guard.
+ */
+function formatPrecisionStatement(precision: CustomShaderPrecision): string {
+  if (precision === "mediump") return "";
+  return `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#endif`;
 }
 
 function formatCustomShaderDebugLabel(
   source: string,
   uniforms: Record<string, number | number[]>,
   textures: Record<string, TextureUniformValue>,
+  helpers: string,
+  precision: CustomShaderPrecision,
 ): string {
   const hasUniforms = Object.keys(uniforms).length > 0;
   const uniformsLine = hasUniforms ? `,\n  uniforms: ${JSON.stringify(uniforms)}` : "";
@@ -77,7 +102,10 @@ function formatCustomShaderDebugLabel(
     ? `,\n  textures: ${JSON.stringify(stringTextures)}`
     : "";
 
-  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}${texturesLine}\n})`;
+  const helpersLine = helpers ? `,\n  helpers: \`\n${escapeTemplateLiteral(helpers)}\n  \`` : "";
+  const precisionLine = precision !== "mediump" ? `,\n  precision: ${JSON.stringify(precision)}` : "";
+
+  return `customShader({\n  source: \`\n${escapeTemplateLiteral(source)}\n  \`${uniformsLine}${texturesLine}${helpersLine}${precisionLine}\n})`;
 }
 
 function escapeTemplateLiteral(value: string): string {

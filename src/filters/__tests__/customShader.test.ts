@@ -79,6 +79,65 @@ describe("customShader", () => {
     expect(b).toBeCloseTo(50, -1);
   });
 
+  it("calls helper functions declared before main() that read user uniforms", () => {
+    const gl = createContext();
+    const img = solidImage(2, 2, 200, 100, 50);
+    const shader = customShader({
+      helpers: `
+        #define HALF 0.5
+        vec3 scaleColor(vec3 color) { return color * HALF * u_gain; }
+      `,
+      source: `
+        vec4 color = texture2D(u_texture, v_texCoord);
+        gl_FragColor = vec4(scaleColor(color.rgb), color.a);
+      `,
+      uniforms: { u_gain: 1.0 },
+    });
+
+    const [r, g, b] = pixel(applyFilters(gl, img, [shader]), 0);
+    expect(r).toBeCloseTo(100, -1);
+    expect(g).toBeCloseTo(50, -1);
+    expect(b).toBeCloseTo(25, -1);
+  });
+
+  it("compiles and renders with highp precision, guarded for GPUs without it", () => {
+    const gl = createContext();
+    const img = solidImage(2, 2, 100, 150, 200);
+    const shader = customShader({
+      source: `gl_FragColor = texture2D(u_texture, v_texCoord);`,
+      precision: "highp",
+    });
+
+    expect(shader.fragmentSource).toContain("#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#endif");
+    const [r, g, b] = pixel(applyFilters(gl, img, [shader]), 0);
+    expect([r, g, b]).toEqual([100, 150, 200]);
+  });
+
+  it("keeps the default fragment source free of precision overrides", () => {
+    const shader = customShader({ source: `gl_FragColor = texture2D(u_texture, v_texCoord);` });
+    expect(shader.fragmentSource).not.toContain("precision");
+  });
+
+  it("records helpers and precision in the debug label", () => {
+    const shader = customShader({
+      source: "gl_FragColor = f();",
+      helpers: "vec4 f() { return vec4(1.0); }",
+      precision: "highp",
+    });
+
+    expect(shader._debugLabel).toBe(
+      "customShader({\n" +
+        "  source: `\n" +
+        "gl_FragColor = f();\n" +
+        "  `,\n" +
+        "  helpers: `\n" +
+        "vec4 f() { return vec4(1.0); }\n" +
+        "  `,\n" +
+        '  precision: "highp"\n' +
+        "})",
+    );
+  });
+
   it("throws a clear error when apply() sees a URL texture uniform", () => {
     const gl = createContext();
     const img = solidImage(2, 2, 100, 150, 200);
